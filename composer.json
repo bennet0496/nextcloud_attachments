@@ -1,7 +1,7 @@
 {
     "name": "bennet0496/nextcloud_attachments",
     "license": "MIT",
-    "description": "This is an example plugin to demo how the integration works",
+    "description": "Upload large attachments to Nextcloud and automatically create share link",
     "type": "roundcube-plugin",
     "authors": [
         {
@@ -16,6 +16,7 @@
         }
     ],
     "require": {
+        "php": ">=8.1",
         "roundcube/plugin-installer": ">=0.1.1",
         "guzzlehttp/guzzle": "^7.8",
         "ext-simplexml": "*",
