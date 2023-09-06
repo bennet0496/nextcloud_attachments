@@ -21,7 +21,6 @@
       <path value="$PROJECT_DIR$/vendor/framework/db" />
       <path value="$PROJECT_DIR$/vendor/framework" />
       <path value="$PROJECT_DIR$/../../program/include" />
-      <path value="" />
       <path value="$PROJECT_DIR$/vendor/guzzlehttp/guzzle" />
       <path value="$PROJECT_DIR$/vendor/guzzlehttp/psr7" />
       <path value="$PROJECT_DIR$/vendor/guzzlehttp/promises" />

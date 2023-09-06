@@ -18,7 +18,8 @@
     "require": {
         "roundcube/plugin-installer": ">=0.1.1",
         "guzzlehttp/guzzle": "^7.8",
-        "ext-simplexml": "*"
+        "ext-simplexml": "*",
+        "ext-json": "*"
     },
     "extra": {
         "roundcube": {

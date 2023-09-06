@@ -1,0 +1,17 @@
+<?php
+
+// Full URL to the Nextcloud server 
+// e.g. https://example.com/nextcloud if in subpath
+// or https://cloud.example.com if in root
+$config["nextcloud_attachment_server"] = "";
+
+// Username resolveing stategy from internal Roundcube
+// username which usually is the email address e.g. user@example.com
+// %u -> email localpart
+// %s -> email as is
+$config["nextcloud_attachment_username"] = "%u";
+
+// Name for the subfolder to upload to
+// Defaults to "Mail Attachments"
+// Can't be subfolder of subfolder link folder/sub
+$config["nextcloud_attachment_folder"] = "Mail Attachments";
