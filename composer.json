@@ -1,12 +1,12 @@
 {
-    "name": "bbecker/nextcloud_attachments",
-    "license": "BSD-3-Clause",
+    "name": "bennet0496/nextcloud_attachments",
+    "license": "MIT",
     "description": "This is an example plugin to demo how the integration works",
     "type": "roundcube-plugin",
     "authors": [
         {
             "name": "Bennet Becker",
-            "email": "bbecker@pks.mpg.de"
+            "email": "dev@bennet.cc"
         }
     ],
     "repositories": [

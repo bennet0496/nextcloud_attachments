@@ -1,3 +1,7 @@
+/**
+ * From https://dev.to/dcodeyt/create-a-button-with-a-loading-spinner-in-html-css-1c0h
+ */
+
 .button--loading .button__text {
     visibility: hidden;
     opacity: 0;
