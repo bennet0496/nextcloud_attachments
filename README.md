@@ -44,10 +44,10 @@ the desired value. However, you will need to modify `post_max_size` and `upload_
 in your `php.ini` to allow large uploads in general
 
 ## Planned Features
- -[ ] Give a selector to upload or attach for any upload similar to Outlook.com
- -[ ] Manage the Nextcloud connection in the user settings
+ - [ ] Give a selector to upload or attach for any upload similar to Outlook.com
+ - [ ] Manage the Nextcloud connection in the user settings
    - currently, if the user removes the password in Nextcloud, the plugin will fail as it
      thinks it has a password, but it does not work
- -[ ] Give the option for a user specific Nextcloud servers
- -[ ] Give the option configure password protected links (system or user)
- -[ ] i18n, l10n
+ - [ ] Give the option for a user specific Nextcloud servers
+ - [ ] Give the option configure password protected links (system or user)
+ - [ ] i18n, l10n
