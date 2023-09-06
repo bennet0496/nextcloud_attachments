@@ -174,7 +174,7 @@ rcmail.addEventListener('init', function(evt) {
                                 window.nextcloud_poll_interval = setInterval(function (t) {
                                     if(rcmail.env.nextcloud_upload_login_available === true && rcmail.env.nextcloud_upload_available === true) {
                                         t.dialog('close');
-                                        clearTimeout(window.nextcloud_poll_interval);
+                                        clearInterval(window.nextcloud_poll_interval);
                                         rcmail.display_message("Successfully logged-in to Nextcloud", "confirmation", 10000);
                                     }
                                 }, 1000, $(this));
