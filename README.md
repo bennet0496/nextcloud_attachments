@@ -8,7 +8,6 @@ configured in Nextcloud, the plugin will ask to log in to create an app password
 This plugin is meant for environment where users have the same login for 
 email and Nextcloud, e.g. company Installations
 
-
 ## Config
 
 The plugin itself has 3 settings. The server, the username strategy and the sub folder.
@@ -51,3 +50,11 @@ in your `php.ini` to allow large uploads in general
  - [ ] Give the option for a user specific Nextcloud servers
  - [ ] Give the option configure password protected links (system or user)
  - [ ] i18n, l10n
+
+## Credits
+
+- Icons for Attachment body
+  - [Ubuntu Yaru](https://github.com/ubuntu/yaru) (CC BY-SA 4.0) 
+  - [Material Icons](https://developers.google.com/fonts/docs/material_icons) (Apache License 2.0)
+- HTTP library: [Guzzle HTTP](https://github.com/guzzle/guzzle) (MIT)
+- Loading Animation: [decode](https://dev.to/dcodeyt/create-a-button-with-a-loading-spinner-in-html-css-1c0h)
