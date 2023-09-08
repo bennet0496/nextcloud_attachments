@@ -72,6 +72,7 @@ class nextcloud_attachments extends rcube_plugin
     public function init(): void
     {
         $this->add_hook("ready", function ($param) {
+//            self::log(print_r($_SESSION, true));
             $rcmail = rcmail::get_instance();
             // files are marked to cloud upload
             if (isset($_REQUEST['_target'] ) && $_REQUEST['_target'] == "cloud") {
@@ -105,8 +106,9 @@ class nextcloud_attachments extends rcube_plugin
 
         //correct the cloud attachment size for retrieval
         $this->add_hook('attachment_get', function ($param) {
+//            self::log(print_r($param, true));
             if ($param["target"] === "cloud") {
-                $param["mimetype"] = "application/nextcloud_attachment";
+                $param["mimetype"] = "application/nextcloud_attachment"; //Mark attachment for later interception
                 $param["status"] = true;
                 $param["size"] = strlen($param["data"]);
                 unset($param["path"]);
@@ -117,15 +119,15 @@ class nextcloud_attachments extends rcube_plugin
         //login flow poll
         $this->add_hook("refresh", [$this, 'poll']);
 
+        //intercept to change attachment encoding
         $this->add_hook("message_ready", function($args) {
             $msg = new Modifiable_Mail_mime($args["message"]);
-
-            self::log(print_r($msg->getParts(), true));
 
             foreach ($msg->getParts() as $key => $part) {
                 if($part['c_type'] === "application/nextcloud_attachment") {
                     $part["disposition"] = "inline";
-                    $part["encoding"] = "quoted-printable";
+                    $part["c_type"] = "text/html";
+                    $part["encoding"] = "quoted-printable"; // We don't want the base64 overhead for the few kb HTML file
                     $part["add_headers"] = [
                         "X-Mozilla-Cloud-Part" => "cloudFile"
                     ];
@@ -443,6 +445,7 @@ class nextcloud_attachments extends rcube_plugin
         }
 
         //create share link
+        $id = rand();
         try {
             $res = $client->post($server . "/ocs/v2.php/apps/files_sharing/api/v1/shares", [
                 "headers" => [
@@ -457,7 +460,7 @@ class nextcloud_attachments extends rcube_plugin
 
             $body = $res->getBody()->getContents();
             $url = "";
-            $id = rand();
+
             if($res->getStatusCode() == 200) { //upload successful
                 $ocs = new SimpleXMLElement($body);
                 //inform client for insert to body
@@ -522,6 +525,24 @@ class nextcloud_attachments extends rcube_plugin
         $tmpl = str_replace("%ICONBLOB%", base64_encode($mime_icon), $tmpl);
         $tmpl = str_replace("%CHECKSUM%", strtoupper($checksum)." ".hash_file($checksum, $data["path"]), $tmpl);
 
+        // Minimize HTML
+        // https://stackoverflow.com/a/6225706
+        $search = array(
+            '/\>[^\S ]+/s',     // strip whitespaces after tags, except space
+            '/[^\S ]+\</s',     // strip whitespaces before tags, except space
+            '/(\s)+/s',         // shorten multiple whitespace sequences
+            '/<!--(.|\s)*?-->/' // Remove HTML comments
+        );
+
+        $replace = array(
+            '>',
+            '<',
+            '\\1',
+            ''
+        );
+
+        $tmpl = preg_replace($search, $replace, $tmpl);
+
         unlink($data["path"]);
 
         //return a html page as attachment that provides the download link
@@ -532,6 +553,7 @@ class nextcloud_attachments extends rcube_plugin
             "name" => $data["name"].".html", //append html suffix
             "mimetype" => "text/html",
             "data" => $tmpl, //just return the few KB text, we deleted the file
+            "path" => null,
             "size" => strlen($tmpl),
             "target" => "cloud", //cloud attachment meta data
             "break" => true //no other plugin should process this attachment future

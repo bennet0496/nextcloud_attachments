@@ -58,3 +58,4 @@ in your `php.ini` to allow large uploads in general
   - [Material Icons](https://developers.google.com/fonts/docs/material_icons) (Apache License 2.0)
 - HTTP library: [Guzzle HTTP](https://github.com/guzzle/guzzle) (MIT)
 - Loading Animation: [decode](https://dev.to/dcodeyt/create-a-button-with-a-loading-spinner-in-html-css-1c0h)
+- HTML minimization: [StackOverflow](https://stackoverflow.com/a/6225706)
