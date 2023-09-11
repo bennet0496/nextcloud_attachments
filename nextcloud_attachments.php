@@ -55,42 +55,12 @@ class nextcloud_attachments extends rcube_plugin
         $this->register_action('plugin.nextcloud_login', [$this, 'login']);
 
         //action to log out
-        $this->register_action('plugin.nextcloud_disconnect', function() {
-            $rcmail = rcmail::get_instance();
-            $prefs = $rcmail->user->get_prefs();
-
-            $username = isset($prefs["nextcloud_login"]) ? $prefs["nextcloud_login"]["loginName"] : $this->resolve_username($rcmail->get_user_name());
-            $password = $prefs["nextcloud_login"]["appPassword"];
-
-            if (isset($password)) {
-                $client = new GuzzleHttp\Client([
-                    'headers' => [
-                        'User-Agent' => 'Roundcube Nextcloud Attachment Connector/1.0',
-                        'OCS-APIRequest' => 'true'
-                    ],
-                    'http_errors' => false,
-                    'auth' => [$username, $password]
-                ]);
-
-                $this->load_config();
-
-                $server = $rcmail->config->get("nextcloud_attachment_server");
-
-                if (!empty($server)) {
-                    try {
-                        $client->delete($server . "/ocs/v2.php/core/apppassword");
-                    } catch (GuzzleException $ignore) { }
-                }
-            }
-
-            $prefs["nextcloud_login"] = null;
-            $rcmail->user->save_prefs($prefs);
-            $rcmail->output->command('command', 'save');
-        });
+        $this->register_action('plugin.nextcloud_disconnect', [$this, 'logout']);
 
         //Intercept filesize for marked files
         $this->add_hook("ready", [$this, 'intercept_filesize']);
 
+        //insert our client script and style
         $this->add_hook("ready",function ($param) {
             $section = rcube_utils::get_input_string('_section', rcube_utils::INPUT_GPC);
 
@@ -99,13 +69,6 @@ class nextcloud_attachments extends rcube_plugin
                 $this->include_script("client.js");
                 $this->include_stylesheet("client.css");
             }
-        });
-
-        //insert our client script and style
-        $this->add_hook('html_editor', function ($params) {
-//            $this->include_script("client.js");
-//            $this->include_stylesheet("client.css");
-            return $params;
         });
 
         //insert our client script and style
@@ -138,47 +101,55 @@ class nextcloud_attachments extends rcube_plugin
         //hook to upload the file
         $this->add_hook('attachment_upload', [$this, 'upload']);
 
-        $this->add_hook('preferences_list', function ($param) {
-//            self::log(print_r($param, true));
+        $this->add_hook('preferences_list', [$this, 'add_preferences']);
 
-            $rcmail = rcmail::get_instance();
-            $prefs = $rcmail->user->get_prefs();
-            $this->load_config();
 
-            $server = $rcmail->config->get("nextcloud_attachment_server");
-            $blocks = $param["blocks"];
+    }
 
-            $username = isset($prefs["nextcloud_login"]) ? $prefs["nextcloud_login"]["loginName"] : $this->resolve_username($rcmail->get_user_name());
+    /**
+     * Hook to add info to compose preferences
+     * @param $param array preferences list
+     * @return array preferences list
+     */
+    public function add_preferences(array $param): array
+    {
+        //            self::log(print_r($param, true));
 
-            $login_result = $this->__check_login();
+        $rcmail = rcmail::get_instance();
+        $prefs = $rcmail->user->get_prefs();
+        $this->load_config();
 
-            $can_disconnect = isset($prefs["nextcloud_login"]);
+        $server = $rcmail->config->get("nextcloud_attachment_server");
+        $blocks = $param["blocks"];
 
-            if ($param["current"] == "compose") {
+        $username = isset($prefs["nextcloud_login"]) ? $prefs["nextcloud_login"]["loginName"] : $this->resolve_username($rcmail->get_user_name());
 
-                $blocks["plugin.nextcloud_attachments"] = [
-                    "name" => "Cloud Attachments",
-                    "options" => [
-                        "server" => [
-                            "title" => "Server",
-                            "content" => "<a href='".$server."' target='_blank'>".parse_url($server,  PHP_URL_HOST)."</a>"
-                        ],
-                        "connection" => [
-                            "title" => "Status",
-                            "content" => $login_result["status"] == "ok" ?
-                                "<b style='color: green'>Connected</b> as ".$username.($can_disconnect ? " (<a href=\"#\" onclick=\"rcmail.http_post('plugin.nextcloud_disconnect')\">disconnect</a>)" : "" ):
-                                "Not connected (<a href=\"#\" onclick=\"window.rcmail.nextcloud_login_button_click_handler(null)\">connect</a>)"
-                        ]
+        $login_result = $this->__check_login();
+
+        $can_disconnect = isset($prefs["nextcloud_login"]);
+
+        if ($param["current"] == "compose") {
+
+            $blocks["plugin.nextcloud_attachments"] = [
+                "name" => "Cloud Attachments",
+                "options" => [
+                    "server" => [
+                        "title" => "Server",
+                        "content" => "<a href='".$server."' target='_blank'>".parse_url($server,  PHP_URL_HOST)."</a>"
+                    ],
+                    "connection" => [
+                        "title" => "Status",
+                        "content" => $login_result["status"] == "ok" ?
+                            "<b style='color: green'>Connected</b> as ".$username.($can_disconnect ? " (<a href=\"#\" onclick=\"rcmail.http_post('plugin.nextcloud_disconnect')\">disconnect</a>)" : "" ):
+                            "Not connected (<a href=\"#\" onclick=\"window.rcmail.nextcloud_login_button_click_handler(null)\">connect</a>)"
                     ]
-                ];
-            }
+                ]
+            ];
+        }
 
-            self::log(print_r($blocks, true));
+        self::log(print_r($blocks, true));
 
-            return ["blocks" => $blocks];
-        });
-
-
+        return ["blocks" => $blocks];
     }
 
     /**
@@ -320,6 +291,44 @@ class nextcloud_attachments extends rcube_plugin
             self::log($rcmail->get_user_name()." login request failed: ". print_r($e, true));
             $rcmail->output->command('plugin.nextcloud_login', ['status' => null]);
         }
+    }
+
+    /**
+     * Action to log out and delete app password if possible
+     * @return void
+     */
+    public function logout() : void
+    {
+        $rcmail = rcmail::get_instance();
+        $prefs = $rcmail->user->get_prefs();
+
+        $username = isset($prefs["nextcloud_login"]) ? $prefs["nextcloud_login"]["loginName"] : $this->resolve_username($rcmail->get_user_name());
+        $password = $prefs["nextcloud_login"]["appPassword"];
+
+        if (isset($password)) {
+            $client = new GuzzleHttp\Client([
+                'headers' => [
+                    'User-Agent' => 'Roundcube Nextcloud Attachment Connector/1.0',
+                    'OCS-APIRequest' => 'true'
+                ],
+                'http_errors' => false,
+                'auth' => [$username, $password]
+            ]);
+
+            $this->load_config();
+
+            $server = $rcmail->config->get("nextcloud_attachment_server");
+
+            if (!empty($server)) {
+                try {
+                    $client->delete($server . "/ocs/v2.php/core/apppassword");
+                } catch (GuzzleException $ignore) { }
+            }
+        }
+
+        $prefs["nextcloud_login"] = null;
+        $rcmail->user->save_prefs($prefs);
+        $rcmail->output->command('command', 'save');
     }
 
     /**
