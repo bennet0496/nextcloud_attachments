@@ -8,6 +8,10 @@ configured in Nextcloud, the plugin will ask to log in to create an app password
 This plugin is meant for environment where users have the same login for 
 email and Nextcloud, e.g. company Installations
 
+![Screenshots](https://github.com/bennet0496/nextcloud_attachments/assets/4955327/c2852c4e-30ca-444c-bf24-172ecc25d75f)
+
+
+
 ## Config
 
 The plugin itself has 3 settings. The server, the username strategy and the sub folder.
