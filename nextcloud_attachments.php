@@ -19,7 +19,9 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-include dirname(__FILE__)."/vendor/autoload.php";
+(include dirname(__FILE__)."/vendor/autoload.php") or die("please run 'composer require' in the nextcloud_attachments plugin folder");
+
+require_once dirname(__FILE__)."/Modifiable_Mail_mime.php";
 
 use GuzzleHttp\Exception\GuzzleException;
 use GuzzleHttp\Psr7;
@@ -27,34 +29,8 @@ use GuzzleHttp\Psr7;
 const NC_LOG_NAME = "nextcloud_attachments";
 const NC_LOG_FILE = "ncattach";
 
-class Modifiable_Mail_mime extends \Mail_mime {
-    public function __construct(\Mail_mime $other) {
-        parent::__construct($other->build_params);
 
-        $this->txtbody = $other->txtbody;
-        $this->htmlbody = $other->htmlbody;
-        $this->calbody = $other->calbody;
-        $this->html_images = $other->html_images;
-        $this->parts = $other->parts;
-        $this->headers = $other->headers;
-    }
-
-    public function getParts(): array
-    {
-        return $this->parts;
-    }
-
-    public function setParts(array $parts): void
-    {
-        $this->parts = $parts;
-    }
-
-    public function setPart(int $i, array $part): void
-    {
-        $this->parts[$i] = $part;
-    }
-}
-
+/** @noinspection PhpUnused */
 class nextcloud_attachments extends rcube_plugin
 {
     private static function log($line): void
@@ -71,38 +47,75 @@ class nextcloud_attachments extends rcube_plugin
     }
     public function init(): void
     {
-        $this->add_hook("ready", function ($param) {
-//            self::log(print_r($_SESSION, true));
-            $rcmail = rcmail::get_instance();
-            // files are marked to cloud upload
-            if (isset($_REQUEST['_target'] ) && $_REQUEST['_target'] == "cloud") {
-                if (isset($_FILES["_attachments"]) && count($_FILES["_attachments"]) > 0) {
-                    //set file sizes to 0 so rcmail_action_mail_attachment_upload::run() will not reject the files,
-                    //so we can get it from rcube_uploads::insert_uploaded_file() later
-                    $_FILES["_attachments"]["size"] = array_map(function ($e) {
-                        return 0;
-                    }, $_FILES["_attachments"]["size"]);
-                } else {
-                    self::log($rcmail->get_user_name()." - empty attachment array: ". print_r($_FILES, true));
-                }
-            }
-        });
-
-        //insert our client script and style
-        $this->add_hook('html_editor', function ($params) {
-            $this->include_script("client.js");
-            $this->include_stylesheet("client.css");
-            return $params;
-        });
-
-        //hook to upload the file
-        $this->add_hook('attachment_upload', [$this, 'upload']);
 
         //action to check if we have a usable login
         $this->register_action('plugin.nextcloud_checklogin', [$this, 'check_login']);
 
         //action to trigger login flow
         $this->register_action('plugin.nextcloud_login', [$this, 'login']);
+
+        //action to log out
+        $this->register_action('plugin.nextcloud_disconnect', function() {
+            $rcmail = rcmail::get_instance();
+            $prefs = $rcmail->user->get_prefs();
+
+            $username = isset($prefs["nextcloud_login"]) ? $prefs["nextcloud_login"]["loginName"] : $this->resolve_username($rcmail->get_user_name());
+            $password = $prefs["nextcloud_login"]["appPassword"];
+
+            if (isset($password)) {
+                $client = new GuzzleHttp\Client([
+                    'headers' => [
+                        'User-Agent' => 'Roundcube Nextcloud Attachment Connector/1.0',
+                        'OCS-APIRequest' => 'true'
+                    ],
+                    'http_errors' => false,
+                    'auth' => [$username, $password]
+                ]);
+
+                $this->load_config();
+
+                $server = $rcmail->config->get("nextcloud_attachment_server");
+
+                if (!empty($server)) {
+                    try {
+                        $client->delete($server . "/ocs/v2.php/core/apppassword");
+                    } catch (GuzzleException $ignore) { }
+                }
+            }
+
+            $prefs["nextcloud_login"] = null;
+            $rcmail->user->save_prefs($prefs);
+            $rcmail->output->command('command', 'save');
+        });
+
+        //Intercept filesize for marked files
+        $this->add_hook("ready", [$this, 'intercept_filesize']);
+
+        $this->add_hook("ready",function ($param) {
+            $section = rcube_utils::get_input_string('_section', rcube_utils::INPUT_GPC);
+
+            if (($param["task"] == "mail" && $param["action"] == "compose") ||
+                ($param["task"] == "settings" && $param["action"] == "edit-prefs" && $section == "compose")){
+                $this->include_script("client.js");
+                $this->include_stylesheet("client.css");
+            }
+        });
+
+        //insert our client script and style
+        $this->add_hook('html_editor', function ($params) {
+//            $this->include_script("client.js");
+//            $this->include_stylesheet("client.css");
+            return $params;
+        });
+
+        //insert our client script and style
+        $this->add_hook('settings_actions', function ($params) {
+            $this->include_script("client.js");
+            $this->include_stylesheet("client.css");
+            return $params;
+        });
+
+
 
         //correct the cloud attachment size for retrieval
         $this->add_hook('attachment_get', function ($param) {
@@ -111,35 +124,120 @@ class nextcloud_attachments extends rcube_plugin
                 $param["mimetype"] = "application/nextcloud_attachment"; //Mark attachment for later interception
                 $param["status"] = true;
                 $param["size"] = strlen($param["data"]);
-                unset($param["path"]);
+                $param["path"] = null;
             }
             return $param;
         });
 
+        //intercept to change attachment encoding
+        $this->add_hook("message_ready", [$this, 'fix_attachment']);
+
         //login flow poll
         $this->add_hook("refresh", [$this, 'poll']);
 
-        //intercept to change attachment encoding
-        $this->add_hook("message_ready", function($args) {
-            $msg = new Modifiable_Mail_mime($args["message"]);
+        //hook to upload the file
+        $this->add_hook('attachment_upload', [$this, 'upload']);
 
-            foreach ($msg->getParts() as $key => $part) {
-                if($part['c_type'] === "application/nextcloud_attachment") {
-                    $part["disposition"] = "inline";
-                    $part["c_type"] = "text/html";
-                    $part["encoding"] = "quoted-printable"; // We don't want the base64 overhead for the few kb HTML file
-                    $part["add_headers"] = [
-                        "X-Mozilla-Cloud-Part" => "cloudFile"
-                    ];
-                    $msg->setPart($key, $part);
-                }
+        $this->add_hook('preferences_list', function ($param) {
+//            self::log(print_r($param, true));
+
+            $rcmail = rcmail::get_instance();
+            $prefs = $rcmail->user->get_prefs();
+            $this->load_config();
+
+            $server = $rcmail->config->get("nextcloud_attachment_server");
+            $blocks = $param["blocks"];
+
+            $username = isset($prefs["nextcloud_login"]) ? $prefs["nextcloud_login"]["loginName"] : $this->resolve_username($rcmail->get_user_name());
+
+            $login_result = $this->__check_login();
+
+            $can_disconnect = isset($prefs["nextcloud_login"]);
+
+            if ($param["current"] == "compose") {
+
+                $blocks["plugin.nextcloud_attachments"] = [
+                    "name" => "Cloud Attachments",
+                    "options" => [
+                        "server" => [
+                            "title" => "Server",
+                            "content" => "<a href='".$server."' target='_blank'>".parse_url($server,  PHP_URL_HOST)."</a>"
+                        ],
+                        "connection" => [
+                            "title" => "Status",
+                            "content" => $login_result["status"] == "ok" ?
+                                "<b style='color: green'>Connected</b> as ".$username.($can_disconnect ? " (<a href=\"#\" onclick=\"rcmail.http_post('plugin.nextcloud_disconnect')\">disconnect</a>)" : "" ):
+                                "Not connected (<a href=\"#\" onclick=\"window.rcmail.nextcloud_login_button_click_handler(null)\">connect</a>)"
+                        ]
+                    ]
+                ];
             }
-            return ["message" => $msg];
+
+            self::log(print_r($blocks, true));
+
+            return ["blocks" => $blocks];
         });
 
 
     }
 
+    /**
+     * correct attachment parameters for nextcloud attachments where
+     * parameters couldn't be set otherwise
+     *
+     * @param array $args original message
+     * @return Modifiable_Mail_mime[] corrected message
+     */
+    public function fix_attachment(array $args): array
+    {
+        $msg = new Modifiable_Mail_mime($args["message"]);
+
+        foreach ($msg->getParts() as $key => $part) {
+            if($part['c_type'] === "application/nextcloud_attachment") {
+                $part["disposition"] = "inline";
+                $part["c_type"] = "text/html";
+                $part["encoding"] = "quoted-printable"; // We don't want the base64 overhead for the few kb HTML file
+                $part["add_headers"] = [
+                    "X-Mozilla-Cloud-Part" => "cloudFile"
+                ];
+                $msg->setPart($key, $part);
+            }
+        }
+        return ["message" => $msg];
+    }
+
+    /**
+     * Ready hook to intercept files marked for cloud upload.
+     *
+     * We set the filesize to 0 to pass the internal filesize checking.
+     * Luckily they don't check the actual file
+     *
+     * @param $param mixed ignored
+     * @noinspection PhpUnusedParameterInspection
+     */
+    public function intercept_filesize(mixed $param): void
+    {
+        self::log(print_r($param, true));
+        $rcmail = rcmail::get_instance();
+        // files are marked to cloud upload
+        if (isset($_REQUEST['_target'] ) && $_REQUEST['_target'] == "cloud") {
+            if (isset($_FILES["_attachments"]) && count($_FILES["_attachments"]) > 0) {
+                //set file sizes to 0 so rcmail_action_mail_attachment_upload::run() will not reject the files,
+                //so we can get it from rcube_uploads::insert_uploaded_file() later
+                $_FILES["_attachments"]["size"] = array_map(function ($e) {
+                    return 0;
+                }, $_FILES["_attachments"]["size"]);
+            } else {
+                self::log($rcmail->get_user_name()." - empty attachment array: ". print_r($_FILES, true));
+            }
+        }
+    }
+
+    /**
+     * Hook to periodically check login result
+     *
+     * @noinspection PhpUnusedParameterInspection
+     */
     public function poll($ignore): void
     {
         //check if there is poll endpoint
@@ -177,6 +275,10 @@ class nextcloud_attachments extends rcube_plugin
         }
     }
 
+    /**
+     * Action to start nextcloud login process
+     * @return void
+     */
     public function login() : void
     {
         $rcmail = rcmail::get_instance();
@@ -220,6 +322,14 @@ class nextcloud_attachments extends rcube_plugin
         }
     }
 
+    /**
+     * Helper to resolve Roundcube username (email) to Nextcloud username
+     *
+     * Returns resolved name or false on configuration error.
+     *
+     * @param $val
+     * @return bool|string
+     */
     private function resolve_username($val): bool|string
     {
         $rcmail = rcmail::get_instance();
@@ -250,7 +360,7 @@ class nextcloud_attachments extends rcube_plugin
         }
     }
 
-    public function check_login(): void
+    private function __check_login(): array
     {
         $rcmail = rcmail::get_instance();
 
@@ -263,8 +373,7 @@ class nextcloud_attachments extends rcube_plugin
 
         //missing config
         if (empty($server) || $username === false) {
-            $rcmail->output->command('plugin.nextcloud_login_result', ['status' => null]);
-            return;
+            return ['status' => null];
         }
 
         //get app password and username or use rc ones
@@ -285,32 +394,51 @@ class nextcloud_attachments extends rcube_plugin
                     unset($prefs["nextcloud_login"]);
                     $rcmail->user->save_prefs($prefs);
                     //we can't use the password
-                    $rcmail->output->command('plugin.nextcloud_login_result', ['status' => 'login_required']);
-                    break;
+                    return ['status' => 'login_required'];
                 case 404:
                     unset($prefs["nextcloud_login"]);
                     $rcmail->user->save_prefs($prefs);
                     //the username does not exist
-                    $rcmail->output->command('plugin.nextcloud_login_result', ['status' => 'invalid_user']);
-                    break;
+                    return ['status' => 'invalid_user'];
                 case 200:
                 case 207:
                     //we can log in
-                    $rcmail->output->command('plugin.nextcloud_login_result', ['status' => 'ok']);
-                    break;
+                    return ['status' => 'ok'];
                 default:
                     unset($prefs["nextcloud_login"]);
                     $rcmail->user->save_prefs($prefs);
                     //something weired happened
-                    $rcmail->output->command('plugin.nextcloud_login_result', ['status' => null, 'code' => $res->getStatusCode(), 'message' => $res->getReasonPhrase()]);
+                    return ['status' => null, 'code' => $res->getStatusCode(), 'message' => $res->getReasonPhrase()];
             }
         } catch (GuzzleException $e) {
             self::log($rcmail->get_user_name()." login check request failed: ". print_r($e, true));
-            $rcmail->output->command('plugin.nextcloud_login_result', ['status' => null]);
+            return ['status' => null];
         }
     }
 
-    private function unique_filename($folder_uri, $filename, $username, $password): bool|string
+    /**
+     * Action to check nextcloud login status
+     * @return void
+     */
+    public function check_login(): void
+    {
+        $rcmail = rcmail::get_instance();
+        $rcmail->output->command('plugin.nextcloud_login_result', $this->__check_login());
+    }
+
+    /**
+     * Helper to find unique filename in upload folder.
+     *
+     * Returns filename or false if resolution failed.
+     * Resolution fails after >100 iterations or on server error
+     *
+     * @param $folder_uri string base uri
+     * @param $filename string start filename
+     * @param $username string login
+     * @param $password string login
+     * @return bool|string unique filename or false on error
+     */
+    private function unique_filename(string $folder_uri, string $filename, string $username, string $password): bool|string
     {
         $client = new GuzzleHttp\Client([
             'auth' => [$username, $password],
@@ -337,7 +465,15 @@ class nextcloud_attachments extends rcube_plugin
         return $fn;
     }
 
-    public function upload($data) : array
+    /**
+     * Hook to upload file
+     *
+     * Return upload information
+     *
+     * @param $data array attachment info
+     * @return array attachment info
+     */
+    public function upload(array $data) : array
     {
         if (!isset($_REQUEST['_target'] ) || $_REQUEST['_target'] !== "cloud") {
             //file not marked to cloud. we won't touch it.

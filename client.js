@@ -118,6 +118,47 @@ rcmail.addEventListener("plugin.nextcloud_upload_result", function(event) {
     }
 });
 
+rcmail.nextcloud_login_button_click_handler = function(btn_evt) {
+    //start login process
+    rcmail.http_post("plugin.nextcloud_login");
+    if(btn_evt !== null) {
+        btn_evt.target.innerText = " ";
+        btn_evt.currentTarget.classList.add("button--loading");
+    }
+    //wait for login url and open it
+    setTimeout(function (t){
+        if (rcmail.env.nextcloud_login_flow !== null) {
+            let hw = window.screen.availWidth / 2, hh = window.screen.availHeight / 2;
+            let x = window.screenX + hw - 300, y = window.screenY + hh - 400;
+            let pos = "screenX=" + x + ",screenY=" + hh;
+            if(!window.open(rcmail.env.nextcloud_login_flow, "", "noopener,noreferrer,popup,width=600,height=800,"+pos)) {
+                t.append("<p>Click <a href=\"" + rcmail.env.nextcloud_login_flow + "\">here</a> if no window opened</p>");
+            } else {
+                t.dialog('close');
+                rcmail.display_message("Logged-in to Nextcloud.", "loading", 10000);
+            }
+            rcmail.env.nextcloud_login_flow = null;
+        } else {
+            t.dialog('close');
+            rcmail.display_message("No login link received. Please try again later.", "error", 10000);
+        }
+    }, 1000, $(this))
+
+    //wait for login to finish
+    window.nextcloud_poll_interval = setInterval(function (t) {
+        rcmail.refresh();
+        if(rcmail.env.nextcloud_upload_login_available === true && rcmail.env.nextcloud_upload_available === true) {
+            if(rcmail.task === "settings") {
+                rcmail.command('save');
+            }else{
+                t.dialog('close');
+            }
+            clearInterval(window.nextcloud_poll_interval);
+            rcmail.display_message("Successfully logged-in to Nextcloud. Please remember to re-upload the file!", "confirmation", 10000);
+        }
+    }, 1000, $(this));
+}
+
 rcmail.addEventListener('init', function(evt) {
     //retrieve nextcloud login status
     rcmail.http_get("plugin.nextcloud_checklogin");
@@ -145,40 +186,11 @@ rcmail.addEventListener('init', function(evt) {
             if (rcmail.env.nextcloud_upload_available !== true && rcmail.env.nextcloud_upload_login_available === true) {
                 rcmail.show_popup_dialog("<p>The file you tried to upload is too large. You can automatically upload "+
                     "large files by connecting to your cloud storage blow.</p>"+
-                    "<p>After connecting the storage, please try uploading the file again.</p>", "File too big", [
+                    "<p><b>After connecting the storage, please try uploading the file again.</b></p>", "File too big", [
                         {
                             text: "Login",
                             'class': 'mainaction login',
-                            click: function(btn_evt){
-                                //start login process
-                                rcmail.http_post("plugin.nextcloud_login");
-                                btn_evt.target.innerText = " ";
-                                btn_evt.currentTarget.classList.add("button--loading");
-                                //wait for login url and open it
-                                setTimeout(function (t){
-                                    if (rcmail.env.nextcloud_login_flow !== null) {
-                                        if(!window.open(rcmail.env.nextcloud_login_flow, "", "noopener,noreferrer,popup")) {
-                                            t.append("<p>Click <a href=\"" + rcmail.env.nextcloud_login_flow + "\">here</a> if no window opened</p>");
-                                        } else {
-                                            t.dialog('close');
-                                            rcmail.display_message("Logged-in to Nextcloud", "loading", 10000);
-                                        }
-                                        rcmail.env.nextcloud_login_flow = null;
-                                    } else {
-                                        t.dialog('close');
-                                        rcmail.display_message("No login link received. Please try again later.", "error", 10000);
-                                    }
-                                }, 1000, $(this))
-
-                                //wait for login to finish
-                                window.nextcloud_poll_interval = setInterval(function (t) {
-                                    if(rcmail.env.nextcloud_upload_login_available === true && rcmail.env.nextcloud_upload_available === true) {
-                                        t.dialog('close');
-                                        clearInterval(window.nextcloud_poll_interval);
-                                        rcmail.display_message("Successfully logged-in to Nextcloud", "confirmation", 10000);
-                                    }
-                                }, 1000, $(this));
-                            }
+                            click: rcmail.nextcloud_login_button_click_handler
                         }]);
                 //pass on to original function, as we can't feasibly delay until the finishes, if they do at all
                 return rcmail.__file_upload(files, post_args, props);
