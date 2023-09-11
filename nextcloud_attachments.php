@@ -113,8 +113,6 @@ class nextcloud_attachments extends rcube_plugin
      */
     public function add_preferences(array $param): array
     {
-        //            self::log(print_r($param, true));
-
         $rcmail = rcmail::get_instance();
         $prefs = $rcmail->user->get_prefs();
         $this->load_config();
@@ -147,8 +145,6 @@ class nextcloud_attachments extends rcube_plugin
                 ]
             ];
         }
-
-        self::log(print_r($blocks, true));
 
         return ["blocks" => $blocks];
     }
@@ -189,7 +185,7 @@ class nextcloud_attachments extends rcube_plugin
      */
     public function intercept_filesize(mixed $param): void
     {
-        self::log(print_r($param, true));
+//        self::log(print_r($param, true));
         $rcmail = rcmail::get_instance();
         // files are marked to cloud upload
         if (isset($_REQUEST['_target'] ) && $_REQUEST['_target'] == "cloud") {
