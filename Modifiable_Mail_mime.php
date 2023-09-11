@@ -1,8 +1,8 @@
 <?php
 
-class Modifiable_Mail_mime extends \Mail_mime
+class Modifiable_Mail_mime extends Mail_mime
 {
-    public function __construct(\Mail_mime $other)
+    public function __construct(Mail_mime $other)
     {
         parent::__construct($other->build_params);
 
@@ -19,6 +19,7 @@ class Modifiable_Mail_mime extends \Mail_mime
         return $this->parts;
     }
 
+    /** @noinspection PhpUnused */
     public function setParts(array $parts): void
     {
         $this->parts = $parts;

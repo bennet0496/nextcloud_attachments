@@ -18,6 +18,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+
 rcmail.addEventListener("plugin.nextcloud_login", function(data) {
     if (data.status === "ok") {
         rcmail.env.nextcloud_login_flow = data.url;
@@ -41,14 +42,13 @@ rcmail.addEventListener("plugin.nextcloud_login_result", function (event) {
 rcmail.addEventListener("plugin.nextcloud_upload_result", function(event) {
     //server finished upload
     if (event.status === "ok") {
-        let position_element, cursor_pos, p = -1,
-            message = this.rcmail.editor.get_content(),
+        let message = this.rcmail.editor.get_content(),
             sig = this.rcmail.env.identity;
 
         //convert to human-readable file size
         let size = event.result?.file?.size;
         const unit = ["", "k", "M", "G", "T"];
-        let i = 0;
+        let i;
         for(i = 0; size > 800 && i < unit.length; i++) {
             size /= 1024;
         }
@@ -58,12 +58,12 @@ rcmail.addEventListener("plugin.nextcloud_upload_result", function(event) {
             let attach_text = "\n" + event.result?.file?.name +
                 " (" + size.toFixed(1) + " " + unit[i] + "B) <"
                 + event.result?.url + ">" + "\n";
-            //insert before signature if one exsists
+            //insert before signature if one exists
             if(sig && this.rcmail.env.signatures && this.rcmail.env.signatures[sig]) {
                 sig = this.rcmail.env.signatures[sig].text;
                 sig = sig.replace(/\r\n/g, '\n');
 
-                p = this.rcmail.env.top_posting ? message.indexOf(sig) : message.lastIndexOf(sig);
+                let p = this.rcmail.env.top_posting ? message.indexOf(sig) : message.lastIndexOf(sig);
 
                 message = message.substring(0, p) + attach_text + message.substring(p, message.length);
             } else {
@@ -91,7 +91,6 @@ rcmail.addEventListener("plugin.nextcloud_upload_result", function(event) {
             rcmail.editor.editor.getBody().insertBefore(paragraph, sigElem);
         }
         rcmail.display_message(event.result?.file?.name + " successfully uploaded to Nextcloud and link inserted", "confirmation", 5000)
-        // this.rcmail.remove_from_attachment_list("rcmfile" + event.result?.file?.id);
     } else {
         // rcmail.show_popup_dialog(JSON.stringify(event), "Nextcloud Upload Failed");
         console.log(event);
@@ -130,7 +129,8 @@ rcmail.nextcloud_login_button_click_handler = function(btn_evt) {
         if (rcmail.env.nextcloud_login_flow !== null) {
             let hw = window.screen.availWidth / 2, hh = window.screen.availHeight / 2;
             let x = window.screenX + hw - 300, y = window.screenY + hh - 400;
-            let pos = "screenX=" + x + ",screenY=" + hh;
+            let pos = "screenX=" + x + ",screenY=" + y;
+            // noinspection SpellCheckingInspection
             if(!window.open(rcmail.env.nextcloud_login_flow, "", "noopener,noreferrer,popup,width=600,height=800,"+pos)) {
                 t.append("<p>Click <a href=\"" + rcmail.env.nextcloud_login_flow + "\">here</a> if no window opened</p>");
             } else {
@@ -159,8 +159,10 @@ rcmail.nextcloud_login_button_click_handler = function(btn_evt) {
     }, 1000, $(this));
 }
 
+// noinspection JSUnusedLocalSymbols
 rcmail.addEventListener('init', function(evt) {
     //retrieve nextcloud login status
+    // noinspection SpellCheckingInspection
     rcmail.http_get("plugin.nextcloud_checklogin");
 
     //intercept file_upload
@@ -184,6 +186,7 @@ rcmail.addEventListener('init', function(evt) {
             //server indicated, it can't use the known username and password from the session
             //to login to nextcloud. Probably because, 2FA is active.
             if (rcmail.env.nextcloud_upload_available !== true && rcmail.env.nextcloud_upload_login_available === true) {
+                // noinspection SpellCheckingInspection
                 rcmail.show_popup_dialog("<p>The file you tried to upload is too large. You can automatically upload "+
                     "large files by connecting to your cloud storage blow.</p>"+
                     "<p><b>After connecting the storage, please try uploading the file again.</b></p>", "File too big", [

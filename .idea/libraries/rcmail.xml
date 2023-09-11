@@ -1,0 +1,35 @@
+<component name="libraryTable">
+  <library name="rcmail" type="javaScript">
+    <properties>
+      <sourceFilesUrls>
+        <item url="file://$PROJECT_DIR$/../../program/js/app.js" />
+        <item url="file://$PROJECT_DIR$/../../program/js/common.js" />
+        <item url="file://$PROJECT_DIR$/../../program/js/editor.js" />
+        <item url="file://$PROJECT_DIR$/../../program/js/googiespell.js" />
+        <item url="file://$PROJECT_DIR$/../../program/js/list.js" />
+        <item url="file://$PROJECT_DIR$/../../program/js/publickey.js" />
+        <item url="file://$PROJECT_DIR$/../../program/js/treelist.js" />
+      </sourceFilesUrls>
+    </properties>
+    <CLASSES>
+      <root url="file://$PROJECT_DIR$/../../program/js/app.js" />
+      <root url="file://$PROJECT_DIR$/../../program/js/app.min.js" />
+      <root url="file://$PROJECT_DIR$/../../program/js/common.js" />
+      <root url="file://$PROJECT_DIR$/../../program/js/common.min.js" />
+      <root url="file://$PROJECT_DIR$/../../program/js/editor.js" />
+      <root url="file://$PROJECT_DIR$/../../program/js/editor.min.js" />
+      <root url="file://$PROJECT_DIR$/../../program/js/googiespell.js" />
+      <root url="file://$PROJECT_DIR$/../../program/js/googiespell.min.js" />
+      <root url="file://$PROJECT_DIR$/../../program/js/jquery.min.js" />
+      <root url="file://$PROJECT_DIR$/../../program/js/jstz.min.js" />
+      <root url="file://$PROJECT_DIR$/../../program/js/list.js" />
+      <root url="file://$PROJECT_DIR$/../../program/js/list.min.js" />
+      <root url="file://$PROJECT_DIR$/../../program/js/publickey.js" />
+      <root url="file://$PROJECT_DIR$/../../program/js/publickey.min.js" />
+      <root url="file://$PROJECT_DIR$/../../program/js/treelist.js" />
+      <root url="file://$PROJECT_DIR$/../../program/js/treelist.min.js" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

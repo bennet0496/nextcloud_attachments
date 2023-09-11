@@ -35,7 +35,6 @@ class nextcloud_attachments extends rcube_plugin
 {
     private static function log($line): void
     {
-        $rcmail = rcmail::get_instance();
         $lines = explode(PHP_EOL, $line);
         rcmail::write_log(NC_LOG_FILE, "[".NC_LOG_NAME."] ".$lines[0]);
         unset($lines[0]);
@@ -49,6 +48,7 @@ class nextcloud_attachments extends rcube_plugin
     {
 
         //action to check if we have a usable login
+        /** @noinspection SpellCheckingInspection */
         $this->register_action('plugin.nextcloud_checklogin', [$this, 'check_login']);
 
         //action to trigger login flow
@@ -130,6 +130,7 @@ class nextcloud_attachments extends rcube_plugin
 
         if ($param["current"] == "compose") {
 
+            /** @noinspection JSUnresolvedReference */
             $blocks["plugin.nextcloud_attachments"] = [
                 "name" => "Cloud Attachments",
                 "options" => [
@@ -321,8 +322,9 @@ class nextcloud_attachments extends rcube_plugin
 
             if (!empty($server)) {
                 try {
+                    /** @noinspection SpellCheckingInspection */
                     $client->delete($server . "/ocs/v2.php/core/apppassword");
-                } catch (GuzzleException $ignore) { }
+                } catch (GuzzleException) { }
             }
         }
 
@@ -346,27 +348,12 @@ class nextcloud_attachments extends rcube_plugin
         $this->load_config();
         $method = $rcmail->config->get("nextcloud_attachment_username");
 
-        switch ($method) {
-            case "%s":
-            case "plain":
-            case "asis":
-            case "copy":
-                return $val;
-            case "%u":
-            case "username":
-            case "localpart":
-            case "stripdomain":
-                return explode("@", $val)[0];
-            case "email":
-                if(strpos($val, "@") !== false) {
-                    return $val;
-                }
-            case "ldap":
-                return false;
-            default:
-                return false;
-
-        }
+        return match ($method) {
+            "%s" => $val,
+            "%u" => explode("@", $val)[0],
+            //"ldap" => false,
+            default => false,
+        };
     }
 
     private function __check_login(): array
@@ -519,39 +506,45 @@ class nextcloud_attachments extends rcube_plugin
         $folder_uri = $server."/remote.php/dav/files/".$username."/".rawurlencode($folder);
 
         //check folder
-        $res = $client->request("PROPFIND", $folder_uri);
+        try {
+            $res = $client->request("PROPFIND", $folder_uri);
 
-        if ($res->getStatusCode() == 404) { //folder does not exist
-            //attempt to create the folder
-            try {
-                $res = $client->request("MKCOL", $folder_uri);
+            if ($res->getStatusCode() == 404) { //folder does not exist
+                //attempt to create the folder
+                try {
+                    $res = $client->request("MKCOL", $folder_uri);
 
-                if ($res->getStatusCode() != 201) { //creation failed
-                    $body = $res->getBody()->getContents();
-                    try {
-                        $xml = new SimpleXMLElement($body);
-                    } catch (Exception $e) {
-                        self::log($username." xml parsing failed: ". print_r($e, true));
-                        $xml = [];
+                    if ($res->getStatusCode() != 201) { //creation failed
+                        $body = $res->getBody()->getContents();
+                        try {
+                            $xml = new SimpleXMLElement($body);
+                        } catch (Exception $e) {
+                            self::log($username." xml parsing failed: ". print_r($e, true));
+                            $xml = [];
+                        }
+
+                        $rcmail->output->command('plugin.nextcloud_upload_result', [
+                            'status' => 'mkdir_error',
+                            'code' => $res->getStatusCode(),
+                            'message' => $res->getReasonPhrase(),
+                            'result' => json_encode($xml)
+                        ]);
+
+                        self::log($username." mkcol failed ". $res->getStatusCode(). PHP_EOL . $res->getBody()->getContents());
+                        return ["status" => false, "abort" => true, "error" => $res->getReasonPhrase()];
                     }
-
-                    $rcmail->output->command('plugin.nextcloud_upload_result', [
-                        'status' => 'mkdir_error',
-                        'code' => $res->getStatusCode(),
-                        'message' => $res->getReasonPhrase(),
-                        'result' => json_encode($xml)
-                    ]);
-
-                    self::log($username." mkcol failed ". $res->getStatusCode(). PHP_EOL . $res->getBody()->getContents());
-                    return ["status" => false, "abort" => true, "error" => $res->getReasonPhrase()];
+                } catch (GuzzleException $e) {
+                    self::log($username." mkcol request failed: ". print_r($e, true));
                 }
-            } catch (GuzzleException $e) {
-                self::log($username." mkcol request failed: ". print_r($e, true));
+            } else if ($res->getStatusCode() > 400) { //we can't access the folder
+                self::log($username." propfind failed ". $res->getStatusCode(). PHP_EOL . $res->getBody()->getContents());
+                $rcmail->output->command('plugin.nextcloud_upload_result', ['status' => 'folder_error']);
+                return ["status" => false, "abort" => true, "error" => $res->getReasonPhrase()];
             }
-        } else if ($res->getStatusCode() > 400) { //we can't access the folder
-            self::log($username." propfind failed ". $res->getStatusCode(). PHP_EOL . $res->getBody()->getContents());
+        } catch (GuzzleException $e) {
+            self::log($username." propfind failed ". print_r($e, true));
             $rcmail->output->command('plugin.nextcloud_upload_result', ['status' => 'folder_error']);
-            return ["status" => false, "abort" => true, "error" => $res->getReasonPhrase()];
+            return ["status" => false, "abort" => true];
         }
 
         //get unique filename
@@ -604,7 +597,6 @@ class nextcloud_attachments extends rcube_plugin
             ]);
 
             $body = $res->getBody()->getContents();
-            $url = "";
 
             if($res->getStatusCode() == 200) { //upload successful
                 $ocs = new SimpleXMLElement($body);
@@ -643,6 +635,10 @@ class nextcloud_attachments extends rcube_plugin
             self::log($username." share file failed: ". print_r($e, true));
             $rcmail->output->command('plugin.nextcloud_upload_result', ['status' => 'link_error']);
             return ["status" => false, "abort" => true];
+        } catch (Exception $e) {
+            self::log($username." xml parse failed: ". print_r($e, true));
+            $rcmail->output->command('plugin.nextcloud_upload_result', ['status' => 'link_error']);
+            return ["status" => false, "abort" => true];
         }
 
         //fill out template attachment HTML
@@ -664,18 +660,21 @@ class nextcloud_attachments extends rcube_plugin
 
 
         $tmpl = str_replace("%FILENAME%", $data["name"], $tmpl);
+        /** @noinspection SpellCheckingInspection */
         $tmpl = str_replace("%FILEURL%", $url, $tmpl);
+        /** @noinspection SpellCheckingInspection */
         $tmpl = str_replace("%SERVERURL%", $server, $tmpl);
         $tmpl = str_replace("%FILESIZE%", round($fs,1)." ".$u[$i]."B", $tmpl);
+        /** @noinspection SpellCheckingInspection */
         $tmpl = str_replace("%ICONBLOB%", base64_encode($mime_icon), $tmpl);
         $tmpl = str_replace("%CHECKSUM%", strtoupper($checksum)." ".hash_file($checksum, $data["path"]), $tmpl);
 
         // Minimize HTML
         // https://stackoverflow.com/a/6225706
         $search = array(
-            '/\>[^\S ]+/s',     // strip whitespaces after tags, except space
-            '/[^\S ]+\</s',     // strip whitespaces before tags, except space
-            '/(\s)+/s',         // shorten multiple whitespace sequences
+            '/>[^\S ]+/',     // strip whitespaces after tags, except space
+            '/[^\S ]+</',     // strip whitespaces before tags, except space
+            '/(\s)+/',         // shorten multiple whitespace sequences
             '/<!--(.|\s)*?-->/' // Remove HTML comments
         );
 
