@@ -19,7 +19,9 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-(include dirname(__FILE__)."/vendor/autoload.php") or die("please run 'composer require' in the nextcloud_attachments plugin folder");
+if(!class_exists("GuzzleHttp\Client")) {
+    (include dirname(__FILE__) . "/vendor/autoload.php") or die("please run 'composer require' in the nextcloud_attachments plugin folder");
+}
 
 require_once dirname(__FILE__)."/Modifiable_Mail_mime.php";
 
