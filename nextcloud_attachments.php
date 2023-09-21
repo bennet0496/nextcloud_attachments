@@ -29,6 +29,8 @@ use GuzzleHttp\Psr7;
 const NC_LOG_NAME = "nextcloud_attachments";
 const NC_LOG_FILE = "ncattach";
 
+const VERSION = "1.1";
+
 
 /** @noinspection PhpUnused */
 class nextcloud_attachments extends rcube_plugin
@@ -46,6 +48,8 @@ class nextcloud_attachments extends rcube_plugin
     }
     public function init(): void
     {
+
+        $this->add_texts("l10n/", true);
 
         //action to check if we have a usable login
         /** @noinspection SpellCheckingInspection */
@@ -84,7 +88,7 @@ class nextcloud_attachments extends rcube_plugin
         $this->add_hook('attachment_get', function ($param) {
 //            self::log(print_r($param, true));
             if ($param["target"] === "cloud") {
-                $param["mimetype"] = "application/nextcloud_attachment"; //Mark attachment for later interception
+                $param["mimetype"] = "application/nextcloud_attachment; url=".$param["uri"]; //Mark attachment for later interception
                 $param["status"] = true;
                 $param["size"] = strlen($param["data"]);
                 $param["path"] = null;
@@ -130,17 +134,17 @@ class nextcloud_attachments extends rcube_plugin
 
             /** @noinspection JSUnresolvedReference */
             $blocks["plugin.nextcloud_attachments"] = [
-                "name" => "Cloud Attachments",
+                "name" => $this->gettext("cloud_attachments"),
                 "options" => [
                     "server" => [
-                        "title" => "Server",
+                        "title" => $this->gettext("cloud_server"),
                         "content" => "<a href='".$server."' target='_blank'>".parse_url($server,  PHP_URL_HOST)."</a>"
                     ],
                     "connection" => [
-                        "title" => "Status",
+                        "title" => $this->gettext("status"),
                         "content" => $login_result["status"] == "ok" ?
-                            "<b style='color: green'>Connected</b> as ".$username.($can_disconnect ? " (<a href=\"#\" onclick=\"rcmail.http_post('plugin.nextcloud_disconnect')\">disconnect</a>)" : "" ):
-                            "Not connected (<a href=\"#\" onclick=\"window.rcmail.nextcloud_login_button_click_handler(null)\">connect</a>)"
+                            $this->gettext("connected_as")." ".$username.($can_disconnect ? " (<a href=\"#\" onclick=\"rcmail.http_post('plugin.nextcloud_disconnect')\">".$this->gettext("disconnect")."</a>)" : "" ):
+                            $this->gettext("not_connected")." (<a href=\"#\" onclick=\"window.rcmail.nextcloud_login_button_click_handler(null)\">".$this->gettext("connect")."</a>)"
                     ]
                 ]
             ];
@@ -161,12 +165,13 @@ class nextcloud_attachments extends rcube_plugin
         $msg = new Modifiable_Mail_mime($args["message"]);
 
         foreach ($msg->getParts() as $key => $part) {
-            if($part['c_type'] === "application/nextcloud_attachment") {
+            if(str_starts_with($part['c_type'], "application/nextcloud_attachment")) {
+                $url = substr(trim(explode(";", $part['c_type'])[1]), strlen("url="));
                 $part["disposition"] = "inline";
                 $part["c_type"] = "text/html";
                 $part["encoding"] = "quoted-printable"; // We don't want the base64 overhead for the few kb HTML file
                 $part["add_headers"] = [
-                    "X-Mozilla-Cloud-Part" => "cloudFile"
+                    "X-Mozilla-Cloud-Part" => "cloudFile; url=".$url
                 ];
                 $msg->setPart($key, $part);
             }
@@ -580,6 +585,16 @@ class nextcloud_attachments extends rcube_plugin
 
         //create share link
         $id = rand();
+        $mime_name = str_replace("/", "-", $data["mimetype"]);
+        $mime_generic_name = str_replace("/", "-", explode("/", $data["mimetype"])[0])."-x-generic";
+
+        $icon_path = dirname(__FILE__)."/icons/Yaru-mimetypes/";
+        $mime_icon = file_exists($icon_path.$mime_name.".png") ?
+            file_get_contents($icon_path.$mime_name.".png") : (
+            file_exists($icon_path.$mime_generic_name.".png") ?
+                file_get_contents($icon_path.$mime_generic_name.".png") :
+                file_get_contents($icon_path."unknown.png"));
+
         try {
             $res = $client->post($server . "/ocs/v2.php/apps/files_sharing/api/v1/shares", [
                 "headers" => [
@@ -605,6 +620,7 @@ class nextcloud_attachments extends rcube_plugin
                             'name' => $data["name"],
                             'size' => filesize($data["path"]),
                             'mimetype' => $data["mimetype"],
+                            'mimeicon' => base64_encode($mime_icon),
                             'id' => $id,
                             'group' => $data["group"],
                         ]
@@ -643,16 +659,6 @@ class nextcloud_attachments extends rcube_plugin
         $fs = filesize($data["path"]);
         $u = ["", "k", "M", "G", "T"];
         for($i = 0; $fs > 800.0 && $i <= count($u); $i++){ $fs /= 1024; }
-
-        $mime_name = str_replace("/", "-", $data["mimetype"]);
-        $mime_generic_name = str_replace("/", "-", explode("/", $data["mimetype"])[0])."-x-generic";
-
-        $icon_path = dirname(__FILE__)."/icons/Yaru-mimetypes/";
-        $mime_icon = file_exists($icon_path.$mime_name.".png") ?
-            file_get_contents($icon_path.$mime_name.".png") : (
-                file_exists($icon_path.$mime_generic_name.".png") ?
-                    file_get_contents($icon_path.$mime_generic_name.".png") :
-                    file_get_contents($icon_path."unknown.png"));
 
 
         $tmpl = str_replace("%FILENAME%", $data["name"], $tmpl);
@@ -696,6 +702,7 @@ class nextcloud_attachments extends rcube_plugin
             "path" => null,
             "size" => strlen($tmpl),
             "target" => "cloud", //cloud attachment meta data
+            "uri" => $url."/download",
             "break" => true //no other plugin should process this attachment future
         ];
     }

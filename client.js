@@ -23,7 +23,7 @@ rcmail.addEventListener("plugin.nextcloud_login", function(data) {
     if (data.status === "ok") {
         rcmail.env.nextcloud_login_flow = data.url;
     } else {
-        rcmail.display_messge("Nextcloud login failed. Please try again later!", "error", 10000);
+        rcmail.display_messge(rcmail.gettext("login_failed", "nextcloud_attachments"), "error", 10000);
     }
 });
 
@@ -56,7 +56,7 @@ rcmail.addEventListener("plugin.nextcloud_upload_result", function(event) {
         //insert link to plaintext editor
         if(!this.rcmail.editor.is_html()){
             let attach_text = "\n" + event.result?.file?.name +
-                " (" + size.toFixed(1) + " " + unit[i] + "B) <"
+                " (" + size.toFixed(1).toLocaleString() + " " + unit[i] + "B) <"
                 + event.result?.url + ">" + "\n";
             //insert before signature if one exists
             if(sig && this.rcmail.env.signatures && this.rcmail.env.signatures[sig]) {
@@ -82,36 +82,62 @@ rcmail.addEventListener("plugin.nextcloud_upload_result", function(event) {
 
             //create <a> link element
             let link = document.createElement("a");
-            link.href = event.result?.url
-            link.innerText = "📎 " + event.result?.file?.name + " (" + size.toFixed(1) + " " + unit[i] + "B)";
+            link.href = event.result?.url;
+            link.style.cssText = "text-decoration: none; color: black; display: grid; grid-template-columns: auto 1fr auto 0fr; grid-auto-rows: min-content; align-items: baseline; background: rgb(220,220,220); max-width: 400px; padding: 1em; border-radius: 10px; font-family: sans-serif";
+
+            let fn = document.createElement("span");
+            fn.innerText = event.result?.file?.name + "\n";
+            fn.style.cssText = "grid-area: 1 / 1;font-size: medium; max-width: 280px; text-overflow: ellipsis; overflow-x: hidden; width: fit-content";
+            link.append(fn);
+
+            let se = document.createElement("span");
+            se.innerText = size.toFixed(1) + " " + unit[i] + "B\n";
+            se.style.cssText = "grid-area: 1 / 2;margin-left: 1em; color: rgb(100,100,100); font-size: x-small; width: fit-content";
+            link.append(se);
+
+            let url = document.createElement("span");
+            url.innerText = event.result?.url;
+            url.style.cssText = "grid-area: 2 / 1 / span 1 / span 3;color: rgb(100,100,100); align-self: end; font-size: small; max-width: 320px; text-overflow: ellipsis; overflow-x: hidden; width: fit-content";
+            link.append(url);
+
+            let imgs = document.createElement("span");
+            imgs.style.cssText = "grid-area: 1 / 4 / span 3 / span 1; align-self: center";
+
+            let img = document.createElement("img");
+            img.setAttribute('src', "data:image/png;base64," + event.result?.file?.mimeicon);
+            console.log("data:image/png;base64," +
+                event.result?.file?.mimeicon, img);
+
+            imgs.append(img);
+            link.append(imgs);
 
             let paragraph = document.createElement("p");
             paragraph.append(link);
 
             rcmail.editor.editor.getBody().insertBefore(paragraph, sigElem);
         }
-        rcmail.display_message(event.result?.file?.name + " successfully uploaded to Nextcloud and link inserted", "confirmation", 5000)
+        rcmail.display_message(event.result?.file?.name + " " + rcmail.gettext("upload_success_link_inserted", "nextcloud_attachments"), "confirmation", 5000)
     } else {
         // rcmail.show_popup_dialog(JSON.stringify(event), "Nextcloud Upload Failed");
         console.log(event);
         switch(event.status) {
             case "no_config":
-                rcmail.display_message("Nextcloud plugin config missing. Contact Admin!", "notice", 2000);
+                rcmail.display_message(rcmail.gettext("missing_config", "nextcloud_attachments"), "notice", 2000);
                 break;
             case "mkdir_error":
-                rcmail.show_popup_dialog("couldn't create sub folder for upload: " + event.message, "Nextcloud Upload Failed");
+                rcmail.show_popup_dialog(rcmail.gettext("cannot_mkdir", "nextcloud_attachments")  + " " + event.message, rcmail.gettext("upload_failed_title", "nextcloud_attachments"));
                 break;
             case "folder_error":
-                rcmail.display_message("Couldn't access upload folder! Check permissions or ask the admin", "error", 2000);
+                rcmail.display_message(rcmail.gettext("folder_access", "nextcloud_attachments"), "error", 2000);
                 break;
             case "name_error":
-                rcmail.show_popup_dialog("couldn't find a unique upload filename. Try renaming the file or files in you Nextcloud folder", "Nextcloud Upload Failed");
+                rcmail.show_popup_dialog(rcmail.gettext("cannot_find_unique_name", "nextcloud_attachments"), rcmail.gettext("upload_failed_title", "nextcloud_attachments"));
                 break;
             case "upload_error":
-                rcmail.display_message("Nextcloud Upload Failed: " + event.message, "error", 10000);
+                rcmail.display_message(rcmail.gettext("upload_failed", "nextcloud_attachments") + " " + event.message, "error", 10000);
                 break;
             case "link_error":
-                rcmail.show_popup_dialog("upload of file succeeded, but we couldn't create a share link. Try to create the link manually or ask the admin for assistance.", "Nextcloud Warning");
+                rcmail.show_popup_dialog(rcmail.gettext("cannot_link", "nextcloud_attachments"), rcmail.gettext("upload_warning_title", "nextcloud_attachments"));
                 break;
         }
     }
@@ -135,12 +161,12 @@ rcmail.nextcloud_login_button_click_handler = function(btn_evt) {
                 t.append("<p>Click <a href=\"" + rcmail.env.nextcloud_login_flow + "\">here</a> if no window opened</p>");
             } else {
                 t.dialog('close');
-                rcmail.display_message("Logged-in to Nextcloud.", "loading", 10000);
+                rcmail.display_message(rcmail.gettext("logging_in", "nextcloud_attachments"), "loading", 10000);
             }
             rcmail.env.nextcloud_login_flow = null;
         } else {
             t.dialog('close');
-            rcmail.display_message("No login link received. Please try again later.", "error", 10000);
+            rcmail.display_message(rcmail.gettext("no_login_link", "nextcloud_attachments"), "error", 10000);
         }
     }, 1000, $(this))
 
@@ -154,7 +180,7 @@ rcmail.nextcloud_login_button_click_handler = function(btn_evt) {
                 t.dialog('close');
             }
             clearInterval(window.nextcloud_poll_interval);
-            rcmail.display_message("Successfully logged-in to Nextcloud. Please remember to re-upload the file!", "confirmation", 10000);
+            rcmail.display_message(rcmail.gettext("logged_in_reupload", "nextcloud_attachments"), "confirmation", 10000);
         }
     }, 1000, $(this));
 }
@@ -187,11 +213,9 @@ rcmail.addEventListener('init', function(evt) {
             //to login to nextcloud. Probably because, 2FA is active.
             if (rcmail.env.nextcloud_upload_available !== true && rcmail.env.nextcloud_upload_login_available === true) {
                 // noinspection SpellCheckingInspection
-                rcmail.show_popup_dialog("<p>The file you tried to upload is too large. You can automatically upload "+
-                    "large files by connecting to your cloud storage blow.</p>"+
-                    "<p><b>After connecting the storage, please try uploading the file again.</b></p>", "File too big", [
+                rcmail.show_popup_dialog(rcmail.gettext("file_too_big_explain", "nextcloud_attachments"), rcmail.gettext("file_too_big", "nextcloud_attachments"), [
                         {
-                            text: "Login",
+                            text: rcmail.gettext("login", "nextcloud_attachments"),
                             'class': 'mainaction login',
                             click: rcmail.nextcloud_login_button_click_handler
                         }]);

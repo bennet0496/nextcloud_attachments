@@ -46,6 +46,11 @@ Files larger than that will automatically be uploaded to Nextcloud, so you shoul
 the desired value. However, you will need to modify `post_max_size` and `upload_max_filesize` 
 in your `php.ini` to allow large uploads in general
 
+__When enabling the plugin make sure to place it before any other attachment plugins like `filesystem_attachments`__ E.g.
+```php
+$config['plugins'] = array('nextcloud_attachments', /*...*/ 'filesystem_attachments', /*...*/ 'vcard_attachments' /*...*/);
+```
+
 ## Planned Features
  - [ ] Give a selector to upload or attach for any upload similar to Outlook.com
  - [x] Manage the Nextcloud connection in the user settings
@@ -53,7 +58,7 @@ in your `php.ini` to allow large uploads in general
      thinks it has a password, but it does not work
  - [ ] Give the option for a user specific Nextcloud servers
  - [ ] Give the option configure password protected links (system or user)
- - [ ] i18n, l10n
+ - [x] i18n, l10n
 
 ## Credits
 
