@@ -16,7 +16,33 @@ $config["nextcloud_attachment_username"] = "%u";
 // Can't be sub-folder of sub-folder link folder/sub
 $config["nextcloud_attachment_folder"] = "Mail Attachments";
 
+// Limit to show a warning at for large attachments.
+// has to be smaller then $config['max_message_size']
+// set to null to disable
+$config["nextcloud_attachment_softlimit"] = "25M";
+
+// Behavior if $config['max_message_size'] is hit.
+// "prompt" to show dialog a la outlook or apple
+// "upload" to automatically upload without asking a la google
+// Defaults to "prompt"
+$config["nextcloud_attachment_behavior"] = "prompt";
+
+// Translate the folder name according to the users configured locale
+// When activating this $config["nextcloud_attachment_folder"] has to be an array
+// of locale => name, e.g.
+// $config["nextcloud_attachment_folder"] = ["en_US" => "Mail Attachments", "de_DE" => "E-Mail Anhänge"]
+// If locale doesn't exist, en_US or first will be used
+// Defaults to false
+$config["nextcloud_attachment_folder_translate_name"] = false;
+
+$config["nextcloud_attachment_translate_html"] = false;
+
 // Checksum Algorithm for Attachment Page
 // Defaults to sha256
 // see https://www.php.net/manual/en/function.hash-algos.php
 $config["nextcloud_attachment_checksum"] = "sha256";
+
+// List of user email to exclude
+// They won't be able to interact with the plugin at all
+// No prompts, no automatic uploading, no settings.
+$config["nextcloud_attachment_exclude_users"] = ["user@demo.com"];

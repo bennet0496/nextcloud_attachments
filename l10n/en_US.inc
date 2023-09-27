@@ -3,15 +3,21 @@
 $labels['login_failed'] = "Nextcloud login failed. Please try again later!";
 $labels['logging_in'] = "Logged-in to Nextcloud.";
 $labels['no_login_link'] = "No login link received. Please try again later.";
-$labels['logged_in_reupload'] = "Successfully logged-in to Nextcloud. Please remember to re-upload the file!";
+$labels['logged_in'] = "Successfully logged-in to Nextcloud.";
 $labels['login'] = "Login";
 
-$labels['file_too_big'] = "File too big";
-$labels['file_too_big_explain'] =
-    "<p>The file you tried to upload is too large. You can automatically upload large ".
-    "files by connecting to your cloud storage blow.</p>".
-    "<p><b>After connecting the storage, please try uploading the file again.</b></p>";
+$labels['file_too_big'] = "File Too Big";
 
+$labels['file_too_big_not_logged_in_explain'] = "The file is larger then %limit% and can't be attached. ".
+    "After connecting the your Nextcloud account below, you may send it anyway, by sharing it as file-link instead.";
+
+$labels['file_too_big_explain'] = "The file is larger then %limit% and can't be attached. You can share it as Nextcloud file-link instead.";
+
+$labels['file_big'] = "How do You Want to Share the File?";
+$labels['file_big_explain'] = "The file is quite large: %size%. You can keep your emails small by sharing it as a file-link instead.";
+
+$labels['link_file'] = "Upload and share link";
+$labels['attach'] = "Attach copy";
 
 $labels['upload_success_link_inserted'] = "successfully uploaded to Nextcloud and link inserted";
 

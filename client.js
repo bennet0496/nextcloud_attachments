@@ -143,7 +143,7 @@ rcmail.addEventListener("plugin.nextcloud_upload_result", function(event) {
     }
 });
 
-rcmail.nextcloud_login_button_click_handler = function(btn_evt) {
+rcmail.nextcloud_login_button_click_handler = function(btn_evt, dialog, files = null, post_args = null, props = null) {
     //start login process
     rcmail.http_post("plugin.nextcloud_login");
     if(btn_evt !== null) {
@@ -158,17 +158,17 @@ rcmail.nextcloud_login_button_click_handler = function(btn_evt) {
             let pos = "screenX=" + x + ",screenY=" + y;
             // noinspection SpellCheckingInspection
             if(!window.open(rcmail.env.nextcloud_login_flow, "", "noopener,noreferrer,popup,width=600,height=800,"+pos)) {
-                t.append("<p>Click <a href=\"" + rcmail.env.nextcloud_login_flow + "\">here</a> if no window opened</p>");
+                t?.append("<p>Click <a href=\"" + rcmail.env.nextcloud_login_flow + "\">here</a> if no window opened</p>");
             } else {
-                t.dialog('close');
+                t?.dialog('close');
                 rcmail.display_message(rcmail.gettext("logging_in", "nextcloud_attachments"), "loading", 10000);
             }
             rcmail.env.nextcloud_login_flow = null;
         } else {
-            t.dialog('close');
+            t?.dialog('close');
             rcmail.display_message(rcmail.gettext("no_login_link", "nextcloud_attachments"), "error", 10000);
         }
-    }, 1000, $(this))
+    }, 1000, dialog)
 
     //wait for login to finish
     window.nextcloud_poll_interval = setInterval(function (t) {
@@ -180,9 +180,22 @@ rcmail.nextcloud_login_button_click_handler = function(btn_evt) {
                 t.dialog('close');
             }
             clearInterval(window.nextcloud_poll_interval);
-            rcmail.display_message(rcmail.gettext("logged_in_reupload", "nextcloud_attachments"), "confirmation", 10000);
+            rcmail.display_message(rcmail.gettext("logged_in", "nextcloud_attachments"), "confirmation", 10000);
+            console.log(files);
+            if(files !== null) {
+                let os = rcmail.env.max_filesize;
+                let size = files.map(f => f.size).reduce((sum, val) =>  sum + val, 0);
+                //if we can log in to nextcloud, we temporally increase the limit
+                //so the checks in the original function will pass
+                rcmail.env.max_filesize += 2 * size;
+                rcmail.__file_upload(files, post_args, props);
+                //restore limit
+                rcmail.env.max_filesize = os;
+            } else {
+                rcmail.command('save');
+            }
         }
-    }, 1000, $(this));
+    }, 500, dialog);
 }
 
 // noinspection JSUnusedLocalSymbols
@@ -201,8 +214,23 @@ rcmail.addEventListener('init', function(evt) {
             return rcmail.__file_upload(files, post_args, props);
         }
 
+        console.log(files);
+        files = Array.from(files);
         //calculate file size
         let size = files.map(f => f.size).reduce((sum, val) =>  sum + val, 0);
+
+        let human_size = size;
+        const unit = ["", "k", "M", "G", "T"];
+        let unit_idx;
+        for(unit_idx = 0; human_size > 800 && unit_idx < unit.length; unit_idx++) {
+            human_size /= 1024;
+        }
+
+        let human_limit = rcmail.env.max_filesize;
+        let limit_unit_idx;
+        for(limit_unit_idx = 0; human_limit > 800 && limit_unit_idx < unit.length; limit_unit_idx++) {
+            human_limit /= 1024;
+        }
 
         //original max_filesize
         let os = rcmail.env.max_filesize;
@@ -213,30 +241,106 @@ rcmail.addEventListener('init', function(evt) {
             //to login to nextcloud. Probably because, 2FA is active.
             if (rcmail.env.nextcloud_upload_available !== true && rcmail.env.nextcloud_upload_login_available === true) {
                 // noinspection SpellCheckingInspection
-                rcmail.show_popup_dialog(rcmail.gettext("file_too_big_explain", "nextcloud_attachments"), rcmail.gettext("file_too_big", "nextcloud_attachments"), [
+                let dialog = rcmail.show_popup_dialog(
+                    rcmail.gettext("file_too_big_not_logged_in_explain", "nextcloud_attachments")
+                        .replace("%limit%", human_limit.toFixed(0) + " " + unit[unit_idx] + "B"),
+                    rcmail.gettext("file_too_big", "nextcloud_attachments"), [
+                    {
+                        text: rcmail.gettext("login", "nextcloud_attachments"),
+                        'class': 'mainaction login',
+                        click: (e) => {
+                            post_args = {_target: "cloud", ...post_args};
+                            rcmail.nextcloud_login_button_click_handler(e, dialog, files, post_args, props);
+                        }
+
+                    },
+                    {
+                        text: rcmail.gettext("close"),
+                        'class': 'cancel',
+                        click: () => {
+                            dialog.dialog('close');
+                        }
+                    }]);
+                //We didn't do anything yet, we may upload later though
+                return false;
+            } else  // We can upload, and do so automatically
+                if (rcmail.env.nextcloud_attachment_behavior === "upload") {
+                //mark for callback that we want this function to go to the cloud
+                post_args = {_target: "cloud", ...post_args};
+                //if we can log in to nextcloud, we temporally increase the limit
+                //so the checks in the original function will pass
+                rcmail.env.max_filesize += 2 * size;
+                // upload file
+                let ret = rcmail.__file_upload(files, post_args, props);
+                // restore limit
+                rcmail.env.max_filesize = os;
+
+                return ret;
+            } else // We can upload, but we ask the user if this is what they want
+            {
+                let dialog = rcmail.show_popup_dialog(
+                    rcmail.gettext("file_too_big_explain", "nextcloud_attachments")
+                        .replace("%limit%", human_limit.toFixed(0) + " " + unit[unit_idx] + "B"),
+                    rcmail.gettext("file_too_big", "nextcloud_attachments"),
+                    [
                         {
-                            text: rcmail.gettext("login", "nextcloud_attachments"),
-                            'class': 'mainaction login',
-                            click: rcmail.nextcloud_login_button_click_handler
-                        }]);
-                //pass on to original function, as we can't feasibly delay until the finishes, if they do at all
-                return rcmail.__file_upload(files, post_args, props);
+                            text: rcmail.gettext("link_file", "nextcloud_attachments"),
+                            'class': 'mainaction',
+                            click: () => {
+                                //mark for callback that we want this function to go to the cloud
+                                post_args = {_target: "cloud", ...post_args};
+                                //if we can log in to nextcloud, we temporally increase the limit
+                                //so the checks in the original function will pass
+                                rcmail.env.max_filesize += 2 * size;
+                                // upload file
+                                rcmail.__file_upload(files, post_args, props);
+                                // restore limit
+                                rcmail.env.max_filesize = os;
+                                dialog.dialog('close');
+                            }
+                        },
+                        {
+                            text: rcmail.gettext("cancel"),
+                            'class': 'cancel',
+                            click: () => {
+                                dialog.dialog('close');
+                            }
+                        }
+                    ]);
             }
+            // We didn't do anything
+            return false;
+        } else // Soft limit hit, prompt the user to hopefully share link instead.
+            if(rcmail.env.nextcloud_attachment_softlimit && size * 1.33 > rcmail.env.nextcloud_attachment_softlimit) {
+            // noinspection SpellCheckingInspection
+            let dialog = rcmail.show_popup_dialog(
+                rcmail.gettext("file_big_explain", "nextcloud_attachments")
+                    .replace("%size%", human_size.toFixed(0) + " " + unit[unit_idx] + "B"),
+                rcmail.gettext("file_big", "nextcloud_attachments"), [
+                    {
+                        text: rcmail.gettext("link_file", "nextcloud_attachments"),
+                        'class': 'mainaction',
+                        click: () => {
+                            post_args = {_target: "cloud", ...post_args};
+                            rcmail.__file_upload(files, post_args, props);
+                            dialog.dialog('close');
+                        }
+                    },
+                    {
+                        text: rcmail.gettext("attach", "nextcloud_attachments"),
+                        'class': 'secondary',
+                        click: () => {
+                            rcmail.__file_upload(files, post_args, props);
+                            dialog.dialog('close');
+                        }
+                    },
+                ]);
+            //pass on to original function, as we can't feasibly delay until the finishes, if they do at all
+            return false;
+        }//upload the files
 
-            //if we can log in to nextcloud, we temporally increase the limit
-            //so the checks in the original function will pass
-            rcmail.env.max_filesize += 2 * size;
-            //mark for callback that we want this function to go to the cloud
-            post_args = {_target: "cloud", ...post_args};
-        }
-
-        //upload the files
-        let ret = rcmail.__file_upload(files, post_args, props);
-
-        //restore the old limit
-        rcmail.env.max_filesize = os;
-
-        return ret;
+        // file needs no handling, pass on
+        return rcmail.__file_upload(files, post_args, props);
     }
 
 });

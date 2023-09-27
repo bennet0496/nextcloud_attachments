@@ -52,7 +52,7 @@ $config['plugins'] = array('nextcloud_attachments', /*...*/ 'filesystem_attachme
 ```
 
 ## Planned Features
- - [ ] Give a selector to upload or attach for any upload similar to Outlook.com
+ - [x] Give a selector to upload or attach for any upload similar to Outlook.com
  - [x] Manage the Nextcloud connection in the user settings
    - currently, if the user removes the password in Nextcloud, the plugin will fail as it
      thinks it has a password, but it does not work

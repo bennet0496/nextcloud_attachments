@@ -50,6 +50,14 @@ class nextcloud_attachments extends rcube_plugin
     }
     public function init(): void
     {
+        $rcmail = rcmail::get_instance();
+        $this->load_config();
+
+        $ex = $rcmail->config->get("nextcloud_attachment_exclude_users", []);
+
+        if (is_array($ex) && in_array($rcmail->get_user_name(), $ex)) {
+           return;
+        }
 
         $this->add_texts("l10n/", true);
 
@@ -72,8 +80,18 @@ class nextcloud_attachments extends rcube_plugin
 
             if (($param["task"] == "mail" && $param["action"] == "compose") ||
                 ($param["task"] == "settings" && $param["action"] == "edit-prefs" && $section == "compose")){
+
+                $rcmail = rcmail::get_instance();
+                $this->load_config();
+
+
                 $this->include_script("client.js");
                 $this->include_stylesheet("client.css");
+
+                $softllimit = parse_bytes($rcmail->config->get("nextcloud_attachment_softlimit", null));
+                $limit  = parse_bytes($rcmail->config->get('max_message_size'));
+                $rcmail->output->set_env("nextcloud_attachment_softlimit", $softllimit > $limit ? null : $softllimit);
+                $rcmail->output->set_env("nextcloud_attachment_behavior", $rcmail->config->get("nextcloud_attachment_behavior", "prompt"));
             }
         });
 
@@ -146,7 +164,7 @@ class nextcloud_attachments extends rcube_plugin
                         "title" => $this->gettext("status"),
                         "content" => $login_result["status"] == "ok" ?
                             $this->gettext("connected_as")." ".$username.($can_disconnect ? " (<a href=\"#\" onclick=\"rcmail.http_post('plugin.nextcloud_disconnect')\">".$this->gettext("disconnect")."</a>)" : "" ):
-                            $this->gettext("not_connected")." (<a href=\"#\" onclick=\"window.rcmail.nextcloud_login_button_click_handler(null)\">".$this->gettext("connect")."</a>)"
+                            $this->gettext("not_connected")." (<a href=\"#\" onclick=\"window.rcmail.nextcloud_login_button_click_handler(null, null)\">".$this->gettext("connect")."</a>)"
                     ]
                 ]
             ];
@@ -502,8 +520,19 @@ class nextcloud_attachments extends rcube_plugin
             return ["status" => false, "abort" => true];
         }
 
+//        $rcmail->get_user_language()
         //get the attachment sub folder
         $folder = $rcmail->config->get("nextcloud_attachment_folder", "Mail Attachments");
+        $tr_folder = $rcmail->config->get("nextcloud_attachment_folder_translate_name", false);
+        if (is_array($folder)) {
+            if($tr_folder && key_exists($rcmail->get_user_language(), $folder)) {
+                $folder = $folder[$rcmail->get_user_language()];
+            } else if ($tr_folder && key_exists("en_US", $folder)) {
+                $folder = $folder["en_US"];
+            } else {
+                $folder = array_first($folder);
+            }
+        }
 
         //full link with urlencoded folder (space must be %20 and not +)
         $folder_uri = $server."/remote.php/dav/files/".$username."/".rawurlencode($folder);
