@@ -482,6 +482,26 @@ class nextcloud_attachments extends rcube_plugin
         return $fn;
     }
 
+    private function split_extension($filename) : array
+    {
+        $fileparts = explode(".", $filename);
+        if (count($fileparts) > 2 && file_exists(dirname(__FILE__)."/mime.extensions")) {
+            $exts = explode("\n", file_get_contents(dirname(__FILE__)."/mime.extensions"));
+            for($i = count($fileparts) - 1; $i >= 0; $i--) {
+                if(!array_search($fileparts[$i], $exts)) {
+                    break;
+                }
+            }
+            $base = implode(".", array_slice($fileparts, 0, $i + 1));
+            $ext = implode(".", array_slice($fileparts, $i));
+        } else {
+            $base = implode(".", array_slice($fileparts, 0, -1));
+            $ext = end($fileparts);
+        }
+
+        return [$base, $ext];
+    }
+
     /**
      * Hook to upload file
      *
@@ -520,6 +540,12 @@ class nextcloud_attachments extends rcube_plugin
             return ["status" => false, "abort" => true];
         }
 
+        $webdav = new webdav_client($username, $password, $server, "/remote.php/dav/files/".$username, function ($id, $message) {
+            global $rcmail;
+            $rcmail->output->command('plugin.nextcloud_upload_result', ['status' => 'error', 'code' => $id, 'message' => $message]);
+            self::log($message);
+        });
+
 //        $rcmail->get_user_language()
         //get the attachment sub folder
         $folder = $rcmail->config->get("nextcloud_attachment_folder", "Mail Attachments");
@@ -537,50 +563,30 @@ class nextcloud_attachments extends rcube_plugin
         //full link with urlencoded folder (space must be %20 and not +)
         $folder_uri = $server."/remote.php/dav/files/".$username."/".rawurlencode($folder);
 
-        //check folder
-        try {
-            $res = $client->request("PROPFIND", $folder_uri);
-
-            if ($res->getStatusCode() == 404) { //folder does not exist
-                //attempt to create the folder
-                try {
-                    $res = $client->request("MKCOL", $folder_uri);
-
-                    if ($res->getStatusCode() != 201) { //creation failed
-                        $body = $res->getBody()->getContents();
-                        try {
-                            $xml = new SimpleXMLElement($body);
-                        } catch (Exception $e) {
-                            self::log($username." xml parsing failed: ". print_r($e, true));
-                            $xml = [];
-                        }
-
-                        $rcmail->output->command('plugin.nextcloud_upload_result', [
-                            'status' => 'mkdir_error',
-                            'code' => $res->getStatusCode(),
-                            'message' => $res->getReasonPhrase(),
-                            'result' => json_encode($xml)
-                        ]);
-
-                        self::log($username." mkcol failed ". $res->getStatusCode(). PHP_EOL . $res->getBody()->getContents());
-                        return ["status" => false, "abort" => true, "error" => $res->getReasonPhrase()];
-                    }
-                } catch (GuzzleException $e) {
-                    self::log($username." mkcol request failed: ". print_r($e, true));
+        if (!$webdav->exists($folder)) {
+            if (!$webdav->mkdir($folder)) {
+                return ["status" => false, "abort" => true, "error" => "mkdir_error"];
+            } else {
+                if (!$webdav->append("/sync-exclude.lst", $folder)) {
+                    return ["status" => false, "abort" => true, "error" => "sync_exclude_append_error"];
                 }
-            } else if ($res->getStatusCode() > 400) { //we can't access the folder
-                self::log($username." propfind failed ". $res->getStatusCode(). PHP_EOL . $res->getBody()->getContents());
-                $rcmail->output->command('plugin.nextcloud_upload_result', ['status' => 'folder_error']);
-                return ["status" => false, "abort" => true, "error" => $res->getReasonPhrase()];
             }
-        } catch (GuzzleException $e) {
-            self::log($username." propfind failed ". print_r($e, true));
-            $rcmail->output->command('plugin.nextcloud_upload_result', ['status' => 'folder_error']);
-            return ["status" => false, "abort" => true];
         }
 
         //get unique filename
         $filename = $this->unique_filename($folder_uri, $data["name"], $username, $password);
+
+        $fn = $filename;
+        $i = 0;
+
+            //iterate the folder until the filename is unique.
+        while ($webdav->exists($fn)) {
+            $d = strrpos($filename, ".", -1);
+            $fn = $d ? substr($filename, 0, $d)." ".++$i. substr($filename, $d) : $filename." ".++$i;
+            if ($i > 100 || $code >= 500) {
+                return false;
+            }
+        }
 
         if ($filename === false) {
             self::log($username." filename determination failed");
@@ -592,6 +598,7 @@ class nextcloud_attachments extends rcube_plugin
 
         //upload file
         $body = Psr7\Utils::tryFopen($data["path"], 'r');
+//        $webdav->put()
         try {
             $res = $client->put($folder_uri . "/" . rawurlencode($filename), ["body" => $body]);
 
