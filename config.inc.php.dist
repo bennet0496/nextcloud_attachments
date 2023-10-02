@@ -35,8 +35,6 @@ $config["nextcloud_attachment_behavior"] = "prompt";
 // Defaults to false
 $config["nextcloud_attachment_folder_translate_name"] = false;
 
-$config["nextcloud_attachment_translate_html"] = false;
-
 // Checksum Algorithm for Attachment Page
 // Defaults to sha256
 // see https://www.php.net/manual/en/function.hash-algos.php

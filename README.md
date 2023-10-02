@@ -14,7 +14,7 @@ email and Nextcloud, e.g. company Installations
 
 ## Config
 
-The plugin itself has 3 settings. The server, the username strategy and the sub folder.
+The plugin itself has 3 core settings. The server, the username strategy and the sub folder.
 
 ```php
 <?php
@@ -42,8 +42,26 @@ However, it also depends on the general config
 // Size in bytes (possible unit suffix: K, M, G)
 $config['max_message_size'] = '25M';
 ```
-Files larger than that will automatically be uploaded to Nextcloud, so you should set it to
-the desired value. However, you will need to modify `post_max_size` and `upload_max_filesize` 
+Files larger than that will/must be uploaded to Nextcloud, so you should set it to
+the desired value. With the following two additional options you can control the behavior 
+of the plugin. Should it behave like Google Mail and automatically without any further 
+user input, or should it behave like Outlook.com with a soft-limit suggesting the user to upload
+and forcing them when the hard limit `$config['max_message_size']` is reached
+
+```php
+// Limit to show a warning at for large attachments.
+// has to be smaller then $config['max_message_size']
+// set to null to disable
+$config["nextcloud_attachment_softlimit"] = "12M";
+
+// Behavior if $config['max_message_size'] is hit.
+// "prompt" to show dialog a la outlook or apple
+// "upload" to automatically upload without asking a la google
+// Defaults to "prompt"
+$config["nextcloud_attachment_behavior"] = "prompt";
+```
+
+Remember, you will need to modify `post_max_size` and `upload_max_filesize` 
 in your `php.ini` to allow large uploads in general
 
 __When enabling the plugin make sure to place it before any other attachment plugins like `filesystem_attachments`__ E.g.
