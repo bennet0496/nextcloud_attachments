@@ -392,9 +392,10 @@ class nextcloud_attachments extends rcube_plugin
         //test webdav login
         try {
             $res = $this->client->request("PROPFIND", $server . "/remote.php/dav/files/" . $username, ['auth' => [$username, $password]]);
-
-            switch ($res->getStatusCode()) {
+            $scode = $res->getStatusCode();
+            switch ($scode) {
                 case 401:
+                case 403:
                     unset($prefs["nextcloud_login"]);
                     $this->rcmail->user->save_prefs($prefs);
                     //we can't use the password
@@ -411,12 +412,16 @@ class nextcloud_attachments extends rcube_plugin
                     //we can log in
                     return ['status' => 'ok'];
                 default:
-                    unset($prefs["nextcloud_login"]);
-                    $this->rcmail->user->save_prefs($prefs);
+                    // Persist for client error codes. keep trying for server errors
+                    if ($scode < 500) {
+                        $_SESSION['plugins']['nextcloud_attachments']['login_result'] =
+                            ['status' => null, 'code' => $scode, 'message' => $res->getReasonPhrase()];
+                    }
+                    //Probably bad idea as a single 500 error will kill the logins of all active users
+                    //unset($prefs["nextcloud_login"]);
+                    //$this->rcmail->user->save_prefs($prefs);
                     //something weired happened
-                    $_SESSION['plugins']['nextcloud_attachments']['login_result'] =
-                        ['status' => null, 'code' => $res->getStatusCode(), 'message' => $res->getReasonPhrase()];
-                    return ['status' => null, 'code' => $res->getStatusCode(), 'message' => $res->getReasonPhrase()];
+                    return ['status' => null, 'code' => $scode, 'message' => $res->getReasonPhrase()];
             }
         } catch (GuzzleException $e) {
             self::log($this->rcmail->get_user_name()." login check request failed: ". print_r($e, true));
