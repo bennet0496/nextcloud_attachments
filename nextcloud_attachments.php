@@ -71,7 +71,6 @@ class nextcloud_attachments extends rcube_plugin
             'verify' => $this->rcmail->config->get("nextcloud_attachment_verify_https", true)
         ]);
 
-        self::log("verify: ". ($this->rcmail->config->get("nextcloud_attachment_verify_https", true) ? "true" : "false"));
 
         $this->add_texts("l10n/", true);
 
@@ -354,14 +353,9 @@ class nextcloud_attachments extends rcube_plugin
      */
     private function resolve_username($val): bool|string
     {
-        $method = $this->rcmail->config->get("nextcloud_attachment_username");
+        $username_tmpl = $this->rcmail->config->get("nextcloud_attachment_username");
 
-        return match ($method) {
-            "%s" => $val,
-            "%u" => explode("@", $val)[0],
-            //"ldap" => false,
-            default => false,
-        };
+        return str_replace(['%s', '%u'], [$val, explode("@", $val)[0]], $username_tmpl);
     }
 
     private function __check_login(): array
@@ -380,6 +374,15 @@ class nextcloud_attachments extends rcube_plugin
         //missing config
         if (empty($server) || $username === false) {
             return ['status' => null];
+        }
+
+        //always prompt for app password, as mail passwords are determined to not work regardless
+        if ($this->rcmail->config->get("nextcloud_attachment_dont_try_mail_password", false)) {
+            if (!isset($prefs["nextcloud_login"]) ||
+                empty($prefs["nextcloud_login"]["loginName"])||
+                empty($prefs["nextcloud_login"]["appPassword"])) {
+                return ['status' => 'login_required'];
+            }
         }
 
         //get app password and username or use rc ones
@@ -483,6 +486,15 @@ class nextcloud_attachments extends rcube_plugin
 
         $prefs = $this->rcmail->user->get_prefs();
 
+        // we are not logged in, and know mail password won't work, so we are not trying anything
+        if ($this->rcmail->config->get("nextcloud_attachment_dont_try_mail_password", false)) {
+            if (!isset($prefs["nextcloud_login"]) ||
+                empty($prefs["nextcloud_login"]["loginName"])||
+                empty($prefs["nextcloud_login"]["appPassword"])) {
+                return ["status" => false, "abort" => true];
+            }
+        }
+
         //get app password and username or use rc ones
         $username = isset($prefs["nextcloud_login"]) ? $prefs["nextcloud_login"]["loginName"] : $this->resolve_username($this->rcmail->get_user_name());
         $password = isset($prefs["nextcloud_login"]) ? $prefs["nextcloud_login"]["appPassword"] : $this->rcmail->get_user_password();
@@ -494,6 +506,15 @@ class nextcloud_attachments extends rcube_plugin
         if (empty($server) || $username === false) {
             $this->rcmail->output->command('plugin.nextcloud_upload_result', ['status' => 'no_config']);
             return ["status" => false, "abort" => true];
+        }
+
+        // we are not logged in, and know mail password won't work, so we are not trying anything
+        if ($this->rcmail->config->get("nextcloud_attachment_dont_try_mail_password", false)) {
+            if (!isset($prefs["nextcloud_login"]) ||
+                empty($prefs["nextcloud_login"]["loginName"])||
+                empty($prefs["nextcloud_login"]["appPassword"])) {
+                return ["status" => false, "abort" => true];
+            }
         }
 
 //        $rcmail->get_user_language()
