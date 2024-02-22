@@ -5,6 +5,8 @@ $labels['logging_in'] = "Melde bei Nextcloud an.";
 $labels['no_login_link'] = "Keinen Link empfangen. Bitte versuchen Sie es sp&auml;ter erneut.";
 $labels['logged_in_reupload'] = "Erfolgreich bei Nextcloud angemeldet.";
 $labels['login'] = "Anmelden";
+$labels['login_and_link_file'] = "Anmelden und Link teilen";
+
 
 $labels['file_too_big'] = "Datei zu gro&szlig;";
 
@@ -16,6 +18,8 @@ $labels['file_too_big_explain'] = " Die Datei ist gr&ouml;&szlig;er als %limit% 
 $labels['file_big'] = "Wie m&ouml;chten Sie diese Datei teilen?";
 $labels['file_big_explain'] = "Die Datei ist ziemlich gro&szlig;: %size%. Sie k&ouml;nnen Ihre E-Mails klein halten, ".
     "in dem Sie sie &uuml;ber Nextcloud als Datei-Link teilen.";
+$labels['file_big_not_logged_in_explain'] = "Die Datei ist ziemlich gro&szlig;: %size%. Sie k&ouml;nnen Ihre E-Mails klein halten, in dem Sie unten".
+    " ihren Nextcloud Account verbinden und stattdessen einen Datei-Link teilen.";
 
 $labels['link_file'] = "Hochladen und als Link teilen";
 $labels['attach'] = "Als Kopie anf&uuml;gen";

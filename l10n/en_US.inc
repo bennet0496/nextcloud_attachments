@@ -5,6 +5,7 @@ $labels['logging_in'] = "Logged-in to Nextcloud.";
 $labels['no_login_link'] = "No login link received. Please try again later.";
 $labels['logged_in'] = "Successfully logged-in to Nextcloud.";
 $labels['login'] = "Login";
+$labels['login_and_link_file'] = "Login and share Link";
 
 $labels['file_too_big'] = "File Too Big";
 
@@ -15,6 +16,8 @@ $labels['file_too_big_explain'] = "The file is larger then %limit% and can't be 
 
 $labels['file_big'] = "How do You Want to Share the File?";
 $labels['file_big_explain'] = "The file is quite large: %size%. You can keep your emails small by sharing it as a file-link instead.";
+$labels['file_big_not_logged_in_explain'] = "The file is quite large: %size%. You can keep your emails small by connecting".
+    " your Nextcloud account below and sharing it as a file-link instead.";
 
 $labels['link_file'] = "Upload and share link";
 $labels['attach'] = "Attach copy";

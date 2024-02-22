@@ -312,29 +312,57 @@ rcmail.addEventListener('init', function(evt) {
             return false;
         } else // Soft limit hit, prompt the user to hopefully share link instead.
             if(rcmail.env.nextcloud_attachment_softlimit && size * 1.33 > rcmail.env.nextcloud_attachment_softlimit) {
-            // noinspection SpellCheckingInspection
-            let dialog = rcmail.show_popup_dialog(
-                rcmail.gettext("file_big_explain", "nextcloud_attachments")
-                    .replace("%size%", human_size.toFixed(0) + " " + unit[unit_idx] + "B"),
-                rcmail.gettext("file_big", "nextcloud_attachments"), [
-                    {
-                        text: rcmail.gettext("link_file", "nextcloud_attachments"),
-                        'class': 'mainaction',
-                        click: () => {
-                            post_args = {_target: "cloud", ...post_args};
-                            rcmail.__file_upload(files, post_args, props);
-                            dialog.dialog('close');
-                        }
-                    },
-                    {
-                        text: rcmail.gettext("attach", "nextcloud_attachments"),
-                        'class': 'secondary',
-                        click: () => {
-                            rcmail.__file_upload(files, post_args, props);
-                            dialog.dialog('close');
-                        }
-                    },
-                ]);
+                //server indicated, it can't use the known username and password from the session
+                //to login to nextcloud. Probably because, 2FA is active.
+                if (rcmail.env.nextcloud_upload_available !== true && rcmail.env.nextcloud_upload_login_available === true) {
+                    // noinspection SpellCheckingInspection
+                    let dialog = rcmail.show_popup_dialog(
+                        rcmail.gettext("file_big_not_logged_in_explain", "nextcloud_attachments")
+                            .replace("%size%", human_limit.toFixed(0) + " " + unit[unit_idx] + "B"),
+                        rcmail.gettext("file_big", "nextcloud_attachments"), [
+                            {
+                                text: rcmail.gettext("login_and_link_file", "nextcloud_attachments"),
+                                'class': 'mainaction login',
+                                click: (e) => {
+                                    post_args = {_target: "cloud", ...post_args};
+                                    rcmail.nextcloud_login_button_click_handler(e, dialog, files, post_args, props);
+                                }
+
+                            },
+                            {
+                                text: rcmail.gettext("attach", "nextcloud_attachments"),
+                                'class': 'secondary',
+                                click: () => {
+                                    rcmail.__file_upload(files, post_args, props);
+                                    dialog.dialog('close');
+                                }
+                            },
+                        ]);
+                } else {
+                    // noinspection SpellCheckingInspection
+                    let dialog = rcmail.show_popup_dialog(
+                        rcmail.gettext("file_big_explain", "nextcloud_attachments")
+                            .replace("%size%", human_size.toFixed(0) + " " + unit[unit_idx] + "B"),
+                        rcmail.gettext("file_big", "nextcloud_attachments"), [
+                            {
+                                text: rcmail.gettext("link_file", "nextcloud_attachments"),
+                                'class': 'mainaction',
+                                click: () => {
+                                    post_args = {_target: "cloud", ...post_args};
+                                    rcmail.__file_upload(files, post_args, props);
+                                    dialog.dialog('close');
+                                }
+                            },
+                            {
+                                text: rcmail.gettext("attach", "nextcloud_attachments"),
+                                'class': 'secondary',
+                                click: () => {
+                                    rcmail.__file_upload(files, post_args, props);
+                                    dialog.dialog('close');
+                                }
+                            },
+                        ]);
+                }
             //pass on to original function, as we can't feasibly delay until the finishes, if they do at all
             return false;
         }//upload the files
