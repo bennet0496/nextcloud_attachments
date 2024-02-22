@@ -31,12 +31,16 @@ use GuzzleHttp\Psr7;
 const NC_LOG_NAME = "nextcloud_attachments";
 const NC_LOG_FILE = "ncattach";
 
-const VERSION = "1.1";
+const VERSION = "1.2.1";
 
 
 /** @noinspection PhpUnused */
 class nextcloud_attachments extends rcube_plugin
 {
+
+    private rcmail $rcmail;
+    private GuzzleHttp\Client $client;
+
     private static function log($line): void
     {
         $lines = explode(PHP_EOL, $line);
@@ -50,14 +54,24 @@ class nextcloud_attachments extends rcube_plugin
     }
     public function init(): void
     {
-        $rcmail = rcmail::get_instance();
+        $this->rcmail = rcmail::get_instance();
         $this->load_config();
 
-        $ex = $rcmail->config->get("nextcloud_attachment_exclude_users", []);
+        $ex = $this->rcmail->config->get("nextcloud_attachment_exclude_users", []);
 
-        if (is_array($ex) && in_array($rcmail->get_user_name(), $ex)) {
+        if (is_array($ex) && in_array($this->rcmail->get_user_name(), $ex)) {
            return;
         }
+
+        $this->client = new GuzzleHttp\Client([
+            'headers' => [
+                'User-Agent' => 'Roundcube Nextcloud Attachment Connector/'.VERSION,
+            ],
+            'http_errors' => false,
+            'verify' => $this->rcmail->config->get("nextcloud_attachment_verify_https", true)
+        ]);
+
+        self::log("verify: ". ($this->rcmail->config->get("nextcloud_attachment_verify_https", true) ? "true" : "false"));
 
         $this->add_texts("l10n/", true);
 
@@ -137,14 +151,13 @@ class nextcloud_attachments extends rcube_plugin
      */
     public function add_preferences(array $param): array
     {
-        $rcmail = rcmail::get_instance();
-        $prefs = $rcmail->user->get_prefs();
-        $this->load_config();
+        $prefs = $this->rcmail->user->get_prefs();
+//        $this->load_config();
 
-        $server = $rcmail->config->get("nextcloud_attachment_server");
+        $server = $this->rcmail->config->get("nextcloud_attachment_server");
         $blocks = $param["blocks"];
 
-        $username = isset($prefs["nextcloud_login"]) ? $prefs["nextcloud_login"]["loginName"] : $this->resolve_username($rcmail->get_user_name());
+        $username = isset($prefs["nextcloud_login"]) ? $prefs["nextcloud_login"]["loginName"] : $this->resolve_username($this->rcmail->get_user_name());
 
         $login_result = $this->__check_login();
 
@@ -211,7 +224,7 @@ class nextcloud_attachments extends rcube_plugin
     public function intercept_filesize(mixed $param): void
     {
 //        self::log(print_r($param, true));
-        $rcmail = rcmail::get_instance();
+//        $rcmail = rcmail::get_instance();
         // files are marked to cloud upload
         if (isset($_REQUEST['_target'] ) && $_REQUEST['_target'] == "cloud") {
             if (isset($_FILES["_attachments"]) && count($_FILES["_attachments"]) > 0) {
@@ -221,7 +234,7 @@ class nextcloud_attachments extends rcube_plugin
                     return 0;
                 }, $_FILES["_attachments"]["size"]);
             } else {
-                self::log($rcmail->get_user_name()." - empty attachment array: ". print_r($_FILES, true));
+                self::log($this->rcmail->get_user_name()." - empty attachment array: ". print_r($_FILES, true));
             }
         }
     }
@@ -235,16 +248,9 @@ class nextcloud_attachments extends rcube_plugin
     {
         //check if there is poll endpoint
         if (isset($_SESSION['plugins']['nextcloud_attachments']['endpoint']) && isset($_SESSION['plugins']['nextcloud_attachments']['token'])) {
-            $client = new GuzzleHttp\Client([
-                'headers' => [
-                    'User-Agent' => 'Roundcube Nextcloud Attachment Connector/1.0',
-                ],
-                'http_errors' => false
-            ]);
-
             //poll it
             try {
-                $res = $client->post($_SESSION['plugins']['nextcloud_attachments']['endpoint'] . "?token=" . $_SESSION['plugins']['nextcloud_attachments']['token']);
+                $res = $this->client->post($_SESSION['plugins']['nextcloud_attachments']['endpoint'] . "?token=" . $_SESSION['plugins']['nextcloud_attachments']['token']);
 
                 //user finished login
                 if($res->getStatusCode() == 200) {
@@ -274,44 +280,34 @@ class nextcloud_attachments extends rcube_plugin
      */
     public function login() : void
     {
-        $rcmail = rcmail::get_instance();
-
-        $this->load_config();
-
-        $server = $rcmail->config->get("nextcloud_attachment_server");
+        $server = $this->rcmail->config->get("nextcloud_attachment_server");
 
         if(empty($server)) {
             return;
         }
 
-        $client = new GuzzleHttp\Client([
-            'headers' => [
-                'User-Agent' => 'Roundcube Nextcloud Attachment Connector/1.0',
-            ],
-            'http_errors' => false
-        ]);
-
         //start login flow
         try {
-            $res = $client->post($server . "/index.php/login/v2");
+            $res = $this->client->post($server . "/index.php/login/v2");
 
             $body = $res->getBody()->getContents();
             $data = json_decode($body, true);
 
             if($res->getStatusCode() !== 200) {
-                self::log($rcmail->get_user_name()." login check request failed: ". print_r($data, true));
-                $rcmail->output->command('plugin.nextcloud_login', [
+                self::log($this->rcmail->get_user_name()." login check request failed: ". print_r($data, true));
+                $this->rcmail->output->command('plugin.nextcloud_login', [
                     'status' => null, "message" => $res->getReasonPhrase(), "response" => $data]);
                 return;
             }
 
             //save poll endpoint and token to session
             $_SESSION['plugins']['nextcloud_attachments'] = $data['poll'];
+            unset($_SESSION['plugins']['nextcloud_attachments']['login_result']);
 
-            $rcmail->output->command('plugin.nextcloud_login', ['status' => "ok", "url" => $data["login"]]);
+            $this->rcmail->output->command('plugin.nextcloud_login', ['status' => "ok", "url" => $data["login"]]);
         } catch (GuzzleException $e) {
-            self::log($rcmail->get_user_name()." login request failed: ". print_r($e, true));
-            $rcmail->output->command('plugin.nextcloud_login', ['status' => null]);
+            self::log($this->rcmail->get_user_name()." login request failed: ". print_r($e, true));
+            $this->rcmail->output->command('plugin.nextcloud_login', ['status' => null]);
         }
     }
 
@@ -321,37 +317,31 @@ class nextcloud_attachments extends rcube_plugin
      */
     public function logout() : void
     {
-        $rcmail = rcmail::get_instance();
-        $prefs = $rcmail->user->get_prefs();
+        $prefs = $this->rcmail->user->get_prefs();
 
-        $username = isset($prefs["nextcloud_login"]) ? $prefs["nextcloud_login"]["loginName"] : $this->resolve_username($rcmail->get_user_name());
+        $username = isset($prefs["nextcloud_login"]) ? $prefs["nextcloud_login"]["loginName"] : $this->resolve_username($this->rcmail->get_user_name());
         $password = $prefs["nextcloud_login"]["appPassword"];
 
         if (isset($password)) {
-            $client = new GuzzleHttp\Client([
-                'headers' => [
-                    'User-Agent' => 'Roundcube Nextcloud Attachment Connector/1.0',
-                    'OCS-APIRequest' => 'true'
-                ],
-                'http_errors' => false,
-                'auth' => [$username, $password]
-            ]);
-
-            $this->load_config();
-
-            $server = $rcmail->config->get("nextcloud_attachment_server");
+            $server = $this->rcmail->config->get("nextcloud_attachment_server");
 
             if (!empty($server)) {
                 try {
                     /** @noinspection SpellCheckingInspection */
-                    $client->delete($server . "/ocs/v2.php/core/apppassword");
+                    $this->client->delete($server . "/ocs/v2.php/core/apppassword", [
+                        'headers' => [
+                            'OCS-APIRequest' => 'true'
+                        ],
+                        'auth' => [$username, $password]
+                    ]);
                 } catch (GuzzleException) { }
             }
         }
 
         $prefs["nextcloud_login"] = null;
-        $rcmail->user->save_prefs($prefs);
-        $rcmail->output->command('command', 'save');
+        unset($_SESSION['plugins']['nextcloud_attachments']);
+        $this->rcmail->user->save_prefs($prefs);
+        $this->rcmail->output->command('command', 'save');
     }
 
     /**
@@ -364,10 +354,7 @@ class nextcloud_attachments extends rcube_plugin
      */
     private function resolve_username($val): bool|string
     {
-        $rcmail = rcmail::get_instance();
-
-        $this->load_config();
-        $method = $rcmail->config->get("nextcloud_attachment_username");
+        $method = $this->rcmail->config->get("nextcloud_attachment_username");
 
         return match ($method) {
             "%s" => $val,
@@ -379,14 +366,16 @@ class nextcloud_attachments extends rcube_plugin
 
     private function __check_login(): array
     {
-        $rcmail = rcmail::get_instance();
+        //Cached Result
+        if( $_SESSION['plugins']['nextcloud_attachments']['login_result'] ) {
+            return $_SESSION['plugins']['nextcloud_attachments']['login_result'];
+        }
 
-        $prefs = $rcmail->user->get_prefs();
-        $this->load_config();
+        $prefs = $this->rcmail->user->get_prefs();
 
-        $server = $rcmail->config->get("nextcloud_attachment_server");
+        $server = $this->rcmail->config->get("nextcloud_attachment_server");
 
-        $username = $this->resolve_username($rcmail->get_user_name());
+        $username = $this->resolve_username($this->rcmail->get_user_name());
 
         //missing config
         if (empty($server) || $username === false) {
@@ -394,28 +383,25 @@ class nextcloud_attachments extends rcube_plugin
         }
 
         //get app password and username or use rc ones
-        $username = isset($prefs["nextcloud_login"]) ? $prefs["nextcloud_login"]["loginName"] : $this->resolve_username($rcmail->get_user_name());
-        $password = isset($prefs["nextcloud_login"]) ? $prefs["nextcloud_login"]["appPassword"] : $rcmail->get_user_password();
-
-        $client = new GuzzleHttp\Client([
-            'auth' => [$username, $password],
-            'http_errors' => false
-        ]);
+        $username = isset($prefs["nextcloud_login"]) ? $prefs["nextcloud_login"]["loginName"] : $this->resolve_username($this->rcmail->get_user_name());
+        $password = isset($prefs["nextcloud_login"]) ? $prefs["nextcloud_login"]["appPassword"] : $this->rcmail->get_user_password();
 
         //test webdav login
         try {
-            $res = $client->request("PROPFIND", $server . "/remote.php/dav/files/" . $username);
+            $res = $this->client->request("PROPFIND", $server . "/remote.php/dav/files/" . $username, ['auth' => [$username, $password]]);
 
             switch ($res->getStatusCode()) {
                 case 401:
                     unset($prefs["nextcloud_login"]);
-                    $rcmail->user->save_prefs($prefs);
+                    $this->rcmail->user->save_prefs($prefs);
                     //we can't use the password
+                    $_SESSION['plugins']['nextcloud_attachments']['login_result'] = ['status' => 'login_required'];
                     return ['status' => 'login_required'];
                 case 404:
                     unset($prefs["nextcloud_login"]);
-                    $rcmail->user->save_prefs($prefs);
+                    $this->rcmail->user->save_prefs($prefs);
                     //the username does not exist
+                    $_SESSION['plugins']['nextcloud_attachments']['login_result'] = ['status' => 'invalid_user'];
                     return ['status' => 'invalid_user'];
                 case 200:
                 case 207:
@@ -423,12 +409,14 @@ class nextcloud_attachments extends rcube_plugin
                     return ['status' => 'ok'];
                 default:
                     unset($prefs["nextcloud_login"]);
-                    $rcmail->user->save_prefs($prefs);
+                    $this->rcmail->user->save_prefs($prefs);
                     //something weired happened
+                    $_SESSION['plugins']['nextcloud_attachments']['login_result'] =
+                        ['status' => null, 'code' => $res->getStatusCode(), 'message' => $res->getReasonPhrase()];
                     return ['status' => null, 'code' => $res->getStatusCode(), 'message' => $res->getReasonPhrase()];
             }
         } catch (GuzzleException $e) {
-            self::log($rcmail->get_user_name()." login check request failed: ". print_r($e, true));
+            self::log($this->rcmail->get_user_name()." login check request failed: ". print_r($e, true));
             return ['status' => null];
         }
     }
@@ -457,17 +445,13 @@ class nextcloud_attachments extends rcube_plugin
      */
     private function unique_filename(string $folder_uri, string $filename, string $username, string $password): bool|string
     {
-        $client = new GuzzleHttp\Client([
-            'auth' => [$username, $password],
-            'http_errors' => false
-        ]);
-
         $fn = $filename;
         $i = 0;
 
         try {
             //iterate the folder until the filename is unique.
-            while (($code = $client->request("PROPFIND", $folder_uri . "/" . rawurlencode($fn))->getStatusCode()) != 404) {
+            while (($code = $this->client->request("PROPFIND", $folder_uri . "/" . rawurlencode($fn),
+                    ['auth' => [$username, $password]])->getStatusCode()) != 404) {
                 $d = strrpos($filename, ".");
                 $fn = substr($filename, 0, $d) . " " . ++$i . substr($filename, $d);
                 if ($i > 100 || $code >= 500) {
@@ -497,36 +481,28 @@ class nextcloud_attachments extends rcube_plugin
             return $data;
         }
 
-        $rcmail = rcmail::get_instance();
-
-        $prefs = $rcmail->user->get_prefs();
-        $this->load_config();
+        $prefs = $this->rcmail->user->get_prefs();
 
         //get app password and username or use rc ones
-        $username = isset($prefs["nextcloud_login"]) ? $prefs["nextcloud_login"]["loginName"] : $this->resolve_username($rcmail->get_user_name());
-        $password = isset($prefs["nextcloud_login"]) ? $prefs["nextcloud_login"]["appPassword"] : $rcmail->get_user_password();
+        $username = isset($prefs["nextcloud_login"]) ? $prefs["nextcloud_login"]["loginName"] : $this->resolve_username($this->rcmail->get_user_name());
+        $password = isset($prefs["nextcloud_login"]) ? $prefs["nextcloud_login"]["appPassword"] : $this->rcmail->get_user_password();
 
-        $server = $rcmail->config->get("nextcloud_attachment_server");
-        $checksum = $rcmail->config->get("nextcloud_attachment_checksum", "sha256");
-
-        $client = new GuzzleHttp\Client([
-            'auth' => [$username, $password],
-            'http_errors' => false
-        ]);
+        $server = $this->rcmail->config->get("nextcloud_attachment_server");
+        $checksum = $this->rcmail->config->get("nextcloud_attachment_checksum", "sha256");
 
         //server not configured
         if (empty($server) || $username === false) {
-            $rcmail->output->command('plugin.nextcloud_upload_result', ['status' => 'no_config']);
+            $this->rcmail->output->command('plugin.nextcloud_upload_result', ['status' => 'no_config']);
             return ["status" => false, "abort" => true];
         }
 
 //        $rcmail->get_user_language()
         //get the attachment sub folder
-        $folder = $rcmail->config->get("nextcloud_attachment_folder", "Mail Attachments");
-        $tr_folder = $rcmail->config->get("nextcloud_attachment_folder_translate_name", false);
+        $folder = $this->rcmail->config->get("nextcloud_attachment_folder", "Mail Attachments");
+        $tr_folder = $this->rcmail->config->get("nextcloud_attachment_folder_translate_name", false);
         if (is_array($folder)) {
-            if($tr_folder && key_exists($rcmail->get_user_language(), $folder)) {
-                $folder = $folder[$rcmail->get_user_language()];
+            if($tr_folder && key_exists($this->rcmail->get_user_language(), $folder)) {
+                $folder = $folder[$this->rcmail->get_user_language()];
             } else if ($tr_folder && key_exists("en_US", $folder)) {
                 $folder = $folder["en_US"];
             } else {
@@ -539,12 +515,12 @@ class nextcloud_attachments extends rcube_plugin
 
         //check folder
         try {
-            $res = $client->request("PROPFIND", $folder_uri);
+            $res = $this->client->request("PROPFIND", $folder_uri, ['auth' => [$username, $password]]);
 
             if ($res->getStatusCode() == 404) { //folder does not exist
                 //attempt to create the folder
                 try {
-                    $res = $client->request("MKCOL", $folder_uri);
+                    $res = $this->client->request("MKCOL", $folder_uri, ['auth' => [$username, $password]]);
 
                     if ($res->getStatusCode() != 201) { //creation failed
                         $body = $res->getBody()->getContents();
@@ -555,7 +531,7 @@ class nextcloud_attachments extends rcube_plugin
                             $xml = [];
                         }
 
-                        $rcmail->output->command('plugin.nextcloud_upload_result', [
+                        $this->rcmail->output->command('plugin.nextcloud_upload_result', [
                             'status' => 'mkdir_error',
                             'code' => $res->getStatusCode(),
                             'message' => $res->getReasonPhrase(),
@@ -570,12 +546,12 @@ class nextcloud_attachments extends rcube_plugin
                 }
             } else if ($res->getStatusCode() > 400) { //we can't access the folder
                 self::log($username." propfind failed ". $res->getStatusCode(). PHP_EOL . $res->getBody()->getContents());
-                $rcmail->output->command('plugin.nextcloud_upload_result', ['status' => 'folder_error']);
+                $this->rcmail->output->command('plugin.nextcloud_upload_result', ['status' => 'folder_error']);
                 return ["status" => false, "abort" => true, "error" => $res->getReasonPhrase()];
             }
         } catch (GuzzleException $e) {
             self::log($username." propfind failed ". print_r($e, true));
-            $rcmail->output->command('plugin.nextcloud_upload_result', ['status' => 'folder_error']);
+            $this->rcmail->output->command('plugin.nextcloud_upload_result', ['status' => 'folder_error']);
             return ["status" => false, "abort" => true];
         }
 
@@ -586,14 +562,14 @@ class nextcloud_attachments extends rcube_plugin
             self::log($username." filename determination failed");
             //it was not possible to find name
             //too many files?
-            $rcmail->output->command('plugin.nextcloud_upload_result', ['status' => 'name_error']);
+            $this->rcmail->output->command('plugin.nextcloud_upload_result', ['status' => 'name_error']);
             return ["status" => false, "abort" => true];
         }
 
         //upload file
         $body = Psr7\Utils::tryFopen($data["path"], 'r');
         try {
-            $res = $client->put($folder_uri . "/" . rawurlencode($filename), ["body" => $body]);
+            $res = $this->client->put($folder_uri . "/" . rawurlencode($filename), ["body" => $body, 'auth' => [$username, $password]]);
 
             if ($res->getStatusCode() != 200 && $res->getStatusCode() != 201) {
                 $body = $res->getBody()->getContents();
@@ -604,13 +580,13 @@ class nextcloud_attachments extends rcube_plugin
                     $xml = [];
                 }
 
-                $rcmail->output->command('plugin.nextcloud_upload_result', [
+                $this->rcmail->output->command('plugin.nextcloud_upload_result', [
                     'status' => 'upload_error', 'message' => $res->getReasonPhrase(), 'result' => json_encode($xml)]);
                 return ["status" => false, "abort" => true, "error" => $res->getReasonPhrase()];
             }
         } catch (GuzzleException $e) {
             self::log($username." put failed: ". print_r($e, true));
-            $rcmail->output->command('plugin.nextcloud_upload_result', ['status' => 'upload_error']);
+            $this->rcmail->output->command('plugin.nextcloud_upload_result', ['status' => 'upload_error']);
             return ["status" => false, "abort" => true, "error" => $res->getReasonPhrase()];
         }
 
@@ -627,7 +603,7 @@ class nextcloud_attachments extends rcube_plugin
                 file_get_contents($icon_path."unknown.png"));
 
         try {
-            $res = $client->post($server . "/ocs/v2.php/apps/files_sharing/api/v1/shares", [
+            $res = $this->client->post($server . "/ocs/v2.php/apps/files_sharing/api/v1/shares", [
                 "headers" => [
                     "OCS-APIRequest" => "true"
                 ],
@@ -635,7 +611,8 @@ class nextcloud_attachments extends rcube_plugin
                     "path" => $folder . "/" . $filename,
                     "shareType" => 3,
                     "publicUpload" => "false",
-                ]
+                ],
+                'auth' => [$username, $password]
             ]);
 
             $body = $res->getBody()->getContents();
@@ -643,7 +620,7 @@ class nextcloud_attachments extends rcube_plugin
             if($res->getStatusCode() == 200) { //upload successful
                 $ocs = new SimpleXMLElement($body);
                 //inform client for insert to body
-                $rcmail->output->command("plugin.nextcloud_upload_result", [
+                $this->rcmail->output->command("plugin.nextcloud_upload_result", [
                     'status' => 'ok',
                     'result' => [
                         'url' => (string) $ocs->data->url,
@@ -666,7 +643,7 @@ class nextcloud_attachments extends rcube_plugin
                     self::log($username." xml parse failed: ". print_r($e, true));
                     $xml = [];
                 }
-                $rcmail->output->command('plugin.nextcloud_upload_result', [
+                $this->rcmail->output->command('plugin.nextcloud_upload_result', [
                     'status' => 'link_error',
                     'code' => $res->getStatusCode(),
                     'message' => $res->getReasonPhrase(),
@@ -676,11 +653,11 @@ class nextcloud_attachments extends rcube_plugin
             }
         } catch (GuzzleException $e) {
             self::log($username." share file failed: ". print_r($e, true));
-            $rcmail->output->command('plugin.nextcloud_upload_result', ['status' => 'link_error']);
+            $this->rcmail->output->command('plugin.nextcloud_upload_result', ['status' => 'link_error']);
             return ["status" => false, "abort" => true];
         } catch (Exception $e) {
             self::log($username." xml parse failed: ". print_r($e, true));
-            $rcmail->output->command('plugin.nextcloud_upload_result', ['status' => 'link_error']);
+            $this->rcmail->output->command('plugin.nextcloud_upload_result', ['status' => 'link_error']);
             return ["status" => false, "abort" => true];
         }
 
