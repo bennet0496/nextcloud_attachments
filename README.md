@@ -79,6 +79,29 @@ __When enabling the plugin make sure to place it before any other attachment plu
 ```php
 $config['plugins'] = array('nextcloud_attachments', /*...*/ 'filesystem_attachments', /*...*/ 'vcard_attachments' /*...*/);
 ```
+### Nextcloud Brute-Force protection
+By default this plugin, tests whether it can use the mail credentials for the Nextcloud login. If lots of users can't login with
+their mail credentials to Nextcloud, e.g., due to high adoption of 2FA or a high percentage of user that are denied form using
+Nextcloud (via LDAP groups or smth), this will inevatably lead to Nextcloud locking out the Roundcube server because it considers
+these logins, as login brutforce attempts.
+
+You can disable the behavior of trying the mail password since version 1.3
+```php
+// Don't try the email password at all, because we know it won't work
+// e.g. due to mandatory 2FA
+// Defaults to false, i.e. try the password
+// Since version 1.3
+$config["nextcloud_attachment_dont_try_mail_password"] = false;
+```
+
+However you might also want to consider, adding you Roundcube server to the Brutforce allow-list of the Nextcloud server.
+To do that you have to [enable the bruteforce settings app](https://docs.nextcloud.com/server/latest/admin_manual/configuration_server/bruteforce_configuration.html#the-brute-force-settings-app)
+and then as an administrator, unter Setting and Security, add your Server's IP to the allow list.
+
+<img width="500" src="https://github.com/bennet0496/nextcloud_attachments/assets/4955327/044fe17d-d400-42ca-b23f-258d8fdd119d">
+
+
+
 
 ### Excluding users
 
