@@ -68,7 +68,7 @@ class nextcloud_attachments extends rcube_plugin
         $exag = $this->rcmail->config->get(_("exclude_users_in_addr_book_group"), []);
 
         // exclude directly denylisted users
-        if (is_array($ex) && (in_array($this->rcmail->get_user_name(), $ex) || in_array($this->resolve_username(), $ex))) {
+        if (is_array($ex) && (in_array($this->rcmail->get_user_name(), $ex) || in_array($this->resolve_username(), $ex) || in_array($this->rcmail->get_user_email(), $ex))) {
             self::log("access for ".$this->resolve_username()." disabled via direct deny list");
             return true;
         }
@@ -100,7 +100,6 @@ class nextcloud_attachments extends rcube_plugin
                     $attr = $val[1];
                     $match = $val[2];
 
-                    //TODO: searching via email is suboptimal if some aliasing is taking place
                     if (array_key_exists("uid", $book->coltypes)) {
                         $entries = $book->search(["email", "uid"], [$this->rcmail->get_user_email(), $this->resolve_username()]);
                     } else {
@@ -108,6 +107,7 @@ class nextcloud_attachments extends rcube_plugin
                     }
                     if($entries) {
                         while ($e = $entries->iterate()) {
+                            //TODO: what happens if it is a multi value attribute
                             if (array_key_exists($attr, $e) && $e[$attr] == $match) {
                                 self::log("access for ".$this->resolve_username().
                                     " disabled in ".$book->get_name()." because of ".$attr."=".$match);

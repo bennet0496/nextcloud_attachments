@@ -6,10 +6,19 @@
 $config["nextcloud_attachment_server"] = "";
 
 // Username resolving strategy from internal Roundcube
-// username which usually is the email address e.g. user@example.com
-// %u -> email local part
-// %s -> email as is
+// username which usually is the email address e.g. user@example.com or IMAP User
+// Placeholders are replaced as following
+// %s => verbatim RC username as reported by rcmail->get_user_name(). Depending on config loginuser@domain or login
+// %i => username used to login to imap. usually equal to %s
+// %e => user email
+// %l, %u => email localpart (%u is for backward compatibility)
+// %d => email domain
+// %h => IMAP Host
 $config["nextcloud_attachment_username"] = "%u";
+
+// Don't try the email password at all, because we know it won't work
+// Defaults to false, i.e. try the password
+$config["nextcloud_attachment_dont_try_mail_password"] = false;
 
 // Name for the sub-folder to upload to
 // Defaults to "Mail Attachments"
@@ -40,7 +49,62 @@ $config["nextcloud_attachment_folder_translate_name"] = false;
 // see https://www.php.net/manual/en/function.hash-algos.php
 $config["nextcloud_attachment_checksum"] = "sha256";
 
-// List of user email to exclude
+// List of users to exclude
 // They won't be able to interact with the plugin at all
 // No prompts, no automatic uploading, no settings.
-$config["nextcloud_attachment_exclude_users"] = ["user@demo.com"];
+// List by RC username or resolved username e.g. ["user@demo.com", "user"]
+$config["nextcloud_attachment_exclude_users"] = [];
+
+// Exclude users listed by uid (you need add the mapping to the address book) or email in any of the following
+// address books. This allows you to configure a hidden LDAP address book containing the users
+// to exclude.
+//
+// Hide an addressbook by setting
+// $config['ldap_public'][*] = [
+//      ...
+//      'hidden' => true,
+// ...
+//  ];
+// in the global config.
+//
+// Add the uid mapping via
+// $config['ldap_public'][*] = [
+//      ...
+//      'fieldmap' => [
+//          ...
+//     //internal => ldapattr
+//          'uid' => 'uid',
+//          ...
+//      ],
+//      ...
+// ]
+// in the global config. Replace mapped attribute with appropriate value for your directory e.g. cn
+// And replace "*" with the appropriate address book name
+$config["nextcloud_attachment_exclude_users_in_addr_books"] = [];
+
+// Exclude users that have a mapped value in an address book
+// format [ [ 'address_book', 'mapped_attribute', 'matched_value' ], ... ]
+//
+// Resulting in every user listed in the address book "address_book"
+// to be excluded if they have a "mapped_attribute", matching "matched_value".
+//
+// E.g. ['public', 'memberOf', 'cn=no_cloud,ou=groups,dc=example,dc=com']
+//
+// multiple attributes and multiple address books are supported
+$config["nextcloud_attachment_exclude_users_with_addr_book_value"] = [];
+
+// Exclude user that that are in a given group in an address book
+// format [ [ 'address_book', 'group' ], ... ]
+//
+// Resulting in every user listed in the address book "address_book" that is
+// is in group "group" to be excluded. You have to correctly configure the group
+// mapping for the LDAP entry
+//
+// E.g. ['public', 'nocloud']
+//
+// multiple groups and multiple address books are supported
+$config["nextcloud_attachment_exclude_users_in_addr_book_group"] = [];
+
+// Enable/Disable certificate validation for https on WebDAV and API requests
+// Defaults to true (enabled)
+$config["nextcloud_attachment_verify_https"] = false;
