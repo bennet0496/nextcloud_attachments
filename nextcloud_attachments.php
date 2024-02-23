@@ -33,7 +33,7 @@ const NC_LOG_FILE = "ncattach";
 
 const VERSION = "1.2.1";
 
-function _(string $val) : string {
+function __(string $val) : string {
     return NC_PREFIX."_".$val;
 }
 
@@ -62,10 +62,10 @@ class nextcloud_attachments extends rcube_plugin
 
     private function is_disabled() : bool
     {
-        $ex   = $this->rcmail->config->get(_("exclude_users"), []);
-        $exg  = $this->rcmail->config->get(_("exclude_users_in_addr_books"), []);
-        $exa  = $this->rcmail->config->get(_("exclude_users_with_addr_book_value"), []);
-        $exag = $this->rcmail->config->get(_("exclude_users_in_addr_book_group"), []);
+        $ex   = $this->rcmail->config->get(__("exclude_users"), []);
+        $exg  = $this->rcmail->config->get(__("exclude_users_in_addr_books"), []);
+        $exa  = $this->rcmail->config->get(__("exclude_users_with_addr_book_value"), []);
+        $exag = $this->rcmail->config->get(__("exclude_users_in_addr_book_group"), []);
 
         // exclude directly denylisted users
         if (is_array($ex) && (in_array($this->rcmail->get_user_name(), $ex) || in_array($this->resolve_username(), $ex) || in_array($this->rcmail->get_user_email(), $ex))) {
@@ -160,7 +160,7 @@ class nextcloud_attachments extends rcube_plugin
                 'User-Agent' => 'Roundcube Nextcloud Attachment Connector/'.VERSION,
             ],
             'http_errors' => false,
-            'verify' => $this->rcmail->config->get(_("verify_https"), true)
+            'verify' => $this->rcmail->config->get(__("verify_https"), true)
         ]);
 
 
@@ -207,10 +207,10 @@ class nextcloud_attachments extends rcube_plugin
                 $this->include_script("client.js");
                 $this->include_stylesheet("client.css");
 
-                $softllimit = parse_bytes($rcmail->config->get(_("softlimit"), null));
+                $softllimit = parse_bytes($rcmail->config->get(__("softlimit"), null));
                 $limit  = parse_bytes($rcmail->config->get('max_message_size'));
-                $rcmail->output->set_env(_("softlimit"), $softllimit > $limit ? null : $softllimit);
-                $rcmail->output->set_env(_("behavior"), $rcmail->config->get(_("behavior"), "prompt"));
+                $rcmail->output->set_env(__("softlimit"), $softllimit > $limit ? null : $softllimit);
+                $rcmail->output->set_env(__("behavior"), $rcmail->config->get(__("behavior"), "prompt"));
             }
         });
 
@@ -283,7 +283,7 @@ class nextcloud_attachments extends rcube_plugin
         $prefs = $this->rcmail->user->get_prefs();
 //        $this->load_config();
 
-        $server = $this->rcmail->config->get(_("server"));
+        $server = $this->rcmail->config->get(__("server"));
         $blocks = $param["blocks"];
 
         $username = isset($prefs["nextcloud_login"]) ? $prefs["nextcloud_login"]["loginName"] : $this->resolve_username($this->rcmail->get_user_name());
@@ -409,7 +409,7 @@ class nextcloud_attachments extends rcube_plugin
      */
     public function login() : void
     {
-        $server = $this->rcmail->config->get(_("server"));
+        $server = $this->rcmail->config->get(__("server"));
 
         if(empty($server)) {
             return;
@@ -452,7 +452,7 @@ class nextcloud_attachments extends rcube_plugin
         $password = $prefs["nextcloud_login"]["appPassword"];
 
         if (isset($password)) {
-            $server = $this->rcmail->config->get(_("server"));
+            $server = $this->rcmail->config->get(__("server"));
 
             if (!empty($server)) {
                 try {
@@ -488,7 +488,7 @@ class nextcloud_attachments extends rcube_plugin
             $user = $this->rcmail->user->get_username();
         }
 
-        $username_tmpl = $this->rcmail->config->get(_("username"));
+        $username_tmpl = $this->rcmail->config->get(__("username"));
 
         $mail = $this->rcmail->user->get_username("mail");
         $mail_local = $this->rcmail->user->get_username("local");
@@ -510,7 +510,7 @@ class nextcloud_attachments extends rcube_plugin
 
         $prefs = $this->rcmail->user->get_prefs();
 
-        $server = $this->rcmail->config->get(_("server"));
+        $server = $this->rcmail->config->get(__("server"));
 
         $username = $this->resolve_username($this->rcmail->get_user_name());
 
@@ -520,7 +520,7 @@ class nextcloud_attachments extends rcube_plugin
         }
 
         //always prompt for app password, as mail passwords are determined to not work regardless
-        if ($this->rcmail->config->get(_("dont_try_mail_password"), false)) {
+        if ($this->rcmail->config->get(__("dont_try_mail_password"), false)) {
             if (!isset($prefs["nextcloud_login"]) ||
                 empty($prefs["nextcloud_login"]["loginName"])||
                 empty($prefs["nextcloud_login"]["appPassword"])) {
@@ -635,7 +635,7 @@ class nextcloud_attachments extends rcube_plugin
         $prefs = $this->rcmail->user->get_prefs();
 
         // we are not logged in, and know mail password won't work, so we are not trying anything
-        if ($this->rcmail->config->get(_("dont_try_mail_password"), false)) {
+        if ($this->rcmail->config->get(__("dont_try_mail_password"), false)) {
             if (!isset($prefs["nextcloud_login"]) ||
                 empty($prefs["nextcloud_login"]["loginName"])||
                 empty($prefs["nextcloud_login"]["appPassword"])) {
@@ -647,8 +647,8 @@ class nextcloud_attachments extends rcube_plugin
         $username = isset($prefs["nextcloud_login"]) ? $prefs["nextcloud_login"]["loginName"] : $this->resolve_username($this->rcmail->get_user_name());
         $password = isset($prefs["nextcloud_login"]) ? $prefs["nextcloud_login"]["appPassword"] : $this->rcmail->get_user_password();
 
-        $server = $this->rcmail->config->get(_("server"));
-        $checksum = $this->rcmail->config->get(_("checksum"), "sha256");
+        $server = $this->rcmail->config->get(__("server"));
+        $checksum = $this->rcmail->config->get(__("checksum"), "sha256");
 
         //server not configured
         if (empty($server) || $username === false) {
@@ -657,7 +657,7 @@ class nextcloud_attachments extends rcube_plugin
         }
 
         // we are not logged in, and know mail password won't work, so we are not trying anything
-        if ($this->rcmail->config->get(_("dont_try_mail_password"), false)) {
+        if ($this->rcmail->config->get(__("dont_try_mail_password"), false)) {
             if (!isset($prefs["nextcloud_login"]) ||
                 empty($prefs["nextcloud_login"]["loginName"])||
                 empty($prefs["nextcloud_login"]["appPassword"])) {
@@ -667,8 +667,8 @@ class nextcloud_attachments extends rcube_plugin
 
 //        $rcmail->get_user_language()
         //get the attachment sub folder
-        $folder = $this->rcmail->config->get(_("folder"), "Mail Attachments");
-        $tr_folder = $this->rcmail->config->get(_("folder_translate_name"), false);
+        $folder = $this->rcmail->config->get(__("folder"), "Mail Attachments");
+        $tr_folder = $this->rcmail->config->get(__("folder_translate_name"), false);
         if (is_array($folder)) {
             if($tr_folder && key_exists($this->rcmail->get_user_language(), $folder)) {
                 $folder = $folder[$this->rcmail->get_user_language()];
