@@ -93,10 +93,10 @@ $config["nextcloud_attachment_exclude_users_in_addr_books"] = ["demo@example.com
 If either their, IMAP (login) username, email or mapped username matches an entry in the list, they won't be
 able to use the plugin (version <1.3 only matched the login usernames).
 
-The other 3 strategies involve using address books, which essentially allow retrieving the status from LDAP. Which is
-useful because that has probably the information who can log in where anyway. Option one is to exclude any user listed
-with their uid or email in a given address book, allowing you to create a (hidden) address book that filters the users 
-that should not be able to use the plugin
+The other 3 strategies (only available in version >=1.3) involve using address books, which essentially allow retrieving 
+the status from LDAP. Which is useful because that has probably the information who can log in where anyway. Option one 
+is to exclude any user listed with their uid or email in a given address book, allowing you to create a (hidden) address 
+book that filters the users that should not be able to use the plugin
 ```php
 $config["nextcloud_attachment_exclude_users_in_addr_books"] = ["nocloud"];
 ```
