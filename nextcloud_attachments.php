@@ -28,7 +28,7 @@ require_once dirname(__FILE__)."/Modifiable_Mail_mime.php";
 use GuzzleHttp\Exception\GuzzleException;
 use GuzzleHttp\Psr7;
 
-const NC_PREFIX = "nextcloud_attachments";
+const NC_PREFIX = "nextcloud_attachment";
 const NC_LOG_FILE = "ncattach";
 
 const VERSION = "1.2.1";
@@ -67,19 +67,23 @@ class nextcloud_attachments extends rcube_plugin
         $exa  = $this->rcmail->config->get(__("exclude_users_with_addr_book_value"), []);
         $exag = $this->rcmail->config->get(__("exclude_users_in_addr_book_group"), []);
 
-        // exclude directly denylisted users
+        // exclude directly deny listed users
         if (is_array($ex) && (in_array($this->rcmail->get_user_name(), $ex) || in_array($this->resolve_username(), $ex) || in_array($this->rcmail->get_user_email(), $ex))) {
             self::log("access for ".$this->resolve_username()." disabled via direct deny list");
             return true;
         }
 
-        // exclude directly denylisted address books
+        // exclude directly deny listed address books
         if (is_array($exg)) {
             foreach ($exg as $book) {
                 $abook = $this->rcmail->get_address_book($book);
                 if ($abook) {
-                    if ($abook->search("email", $this->rcmail->get_user_name())) {
-                        //TODO: searching via email is suboptimal if some aliasing is taking place
+                    if (array_key_exists("uid", $book->coltypes)) {
+                        $entries = $book->search(["email", "uid"], [$this->rcmail->get_user_email(), $this->resolve_username()]);
+                    } else {
+                        $entries = $book->search("email", $this->rcmail->get_user_email());
+                    }
+                    if ($entries) {
                         self::log("access for ".$this->resolve_username().
                             " disabled in ".$book->get_name()." because they exist in there");
                         return true;
@@ -105,10 +109,11 @@ class nextcloud_attachments extends rcube_plugin
                     } else {
                         $entries = $book->search("email", $this->rcmail->get_user_email());
                     }
+
                     if($entries) {
                         while ($e = $entries->iterate()) {
-                            //TODO: what happens if it is a multi value attribute
-                            if (array_key_exists($attr, $e) && $e[$attr] == $match) {
+                            if (array_key_exists($attr, $e) && ($e[$attr] == $match ||
+                                    (is_array($e[$attr]) && in_array($match, $e[$attr])))) {
                                 self::log("access for ".$this->resolve_username().
                                     " disabled in ".$book->get_name()." because of ".$attr."=".$match);
                                 return true;
@@ -145,15 +150,13 @@ class nextcloud_attachments extends rcube_plugin
     public function init(): void
     {
         $this->rcmail = rcmail::get_instance();
+        $this->load_config("config.inc.php.dist");
         $this->load_config();
 
-//        self::log($_SESSION);
-//        self::log([$this->rcmail->get_user_name(), $this->rcmail->get_user_email()]);
-
-        $this->add_hook("storage_connected", function ($data) {
-            $_SESSION['storage_user'] = $data['user'];
-            return $data;
-        });
+        if (empty($this->rcmail->config->get(__("server")))) {
+            self::log("invalid config. server is empty");
+            return;
+        }
 
         $this->client = new GuzzleHttp\Client([
             'headers' => [
@@ -281,7 +284,6 @@ class nextcloud_attachments extends rcube_plugin
     {
 
         $prefs = $this->rcmail->user->get_prefs();
-//        $this->load_config();
 
         $server = $this->rcmail->config->get(__("server"));
         $blocks = $param["blocks"];

@@ -9,15 +9,13 @@ $labels['login_and_link_file'] = "Login and share Link";
 
 $labels['file_too_big'] = "File Too Big";
 
-$labels['file_too_big_not_logged_in_explain'] = "The file is larger then %limit% and can't be attached. ".
-    "After connecting the your Nextcloud account below, you may send it anyway, by sharing it as file-link instead.";
+$labels['file_too_big_not_logged_in_explain'] = "The file is larger then %limit% and can't be attached. After connecting the your Nextcloud account below, you may send it anyway, by sharing it as file-link instead.";
 
 $labels['file_too_big_explain'] = "The file is larger then %limit% and can't be attached. You can share it as Nextcloud file-link instead.";
 
 $labels['file_big'] = "How do You Want to Share the File?";
 $labels['file_big_explain'] = "The file is quite large: %size%. You can keep your emails small by sharing it as a file-link instead.";
-$labels['file_big_not_logged_in_explain'] = "The file is quite large: %size%. You can keep your emails small by connecting".
-    " your Nextcloud account below and sharing it as a file-link instead.";
+$labels['file_big_not_logged_in_explain'] = "The file is quite large: %size%. You can keep your emails small by connecting your Nextcloud account below and sharing it as a file-link instead.";
 
 $labels['link_file'] = "Upload and share link";
 $labels['attach'] = "Attach copy";
