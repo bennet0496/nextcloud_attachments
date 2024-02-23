@@ -31,7 +31,7 @@ use GuzzleHttp\Psr7;
 const NC_PREFIX = "nextcloud_attachment";
 const NC_LOG_FILE = "ncattach";
 
-const VERSION = "1.2.1";
+const VERSION = "1.3";
 
 function __(string $val): string
 {
