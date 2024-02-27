@@ -25,14 +25,30 @@ $config["nextcloud_attachment_dont_try_mail_password"] = false;
 // Can't be sub-folder of sub-folder link folder/sub
 $config["nextcloud_attachment_folder"] = "Mail Attachments";
 
+// Folder Layout
+// "flat"            => Flat folder layout, everything in the Folder
+// "date:format"     => Create folder hierarchy according to format. See https://unicode-org.github.io/icu/userguide/format_parse/datetime/
+//                      Use "/" as the folder separator. Defaults to date:Y/LLLL
+//                      Dateformat is localized
+// "hash:algo:depth" => Use "algo"-hash of file, creating sub folder for every of the "depth" bytes
+//                      see https://www.php.net/manual/en/function.hash-algos.php
+//                      Defaults to hash:sha1:2
+// Defaults to flat
+$config["nextcloud_attachment_folder_layout"] = "flat";
+
+// (Dis)Allow user to change the layout
+// true => layout is locked, i.e. not user-changeable
+// false => user may change the layout on their settings page
+$config["nextcloud_attachment_folder_layout_lock"] = true;
+
 // Limit to show a warning at for large attachments.
 // has to be smaller then $config['max_message_size']
 // set to null to disable
 $config["nextcloud_attachment_softlimit"] = "25M";
 
 // Behavior if $config['max_message_size'] is hit.
-// "prompt" to show dialog a la outlook or apple
-// "upload" to automatically upload without asking a la google
+// "prompt" => show dialog a la outlook or apple
+// "upload" => automatically upload without asking a la google
 // Defaults to "prompt"
 $config["nextcloud_attachment_behavior"] = "prompt";
 

@@ -17,7 +17,7 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
-
+// noinspection JSUnresolvedReference
 
 rcmail.addEventListener("plugin.nextcloud_login", function(data) {
     if (data.status === "ok") {
@@ -39,6 +39,35 @@ rcmail.addEventListener("plugin.nextcloud_login_result", function (event) {
         this.rcmail.env.nextcloud_upload_available = false;
     }
 });
+
+rcmail.addEventListener("plugin.nextcloud_delete_result", function (event) {
+    if (event.status === "ok") {
+        rcmail.display_message(rcmail.gettext("delete_ok", "nextcloud_attachments"), "success", 2000);
+    } else {
+        let dialog = rcmail.show_popup_dialog(
+            rcmail.gettext("delete_error_explain", "nextcloud_attachments").replace("%reason%", event.message ?? "Unspecified"),
+            rcmail.gettext("remove_attachment", "nextcloud_attachments"), [
+                {
+                    text: rcmail.gettext("remove_from_list", "nextcloud_attachments"),
+                    'class': '',
+                    click: (e) => {
+                        rcmail.remove_from_attachment_list("rcmfile" + event.file);
+                        dialog.dialog('close');
+                    }
+
+                },
+                {
+                    text: rcmail.gettext("cancel"),
+                    'class': 'cancel',
+                    click: () => {
+                        dialog.dialog('close');
+                    }
+                }]
+        );
+        // rcmail.display_message(rcmail.gettext("delete_error", "nextcloud_attachments"), "error", 2000);
+    }
+});
+
 rcmail.addEventListener("plugin.nextcloud_upload_result", function(event) {
     //server finished upload
     if (event.status === "ok") {
@@ -105,8 +134,6 @@ rcmail.addEventListener("plugin.nextcloud_upload_result", function(event) {
 
             let img = document.createElement("img");
             img.setAttribute('src', "data:image/png;base64," + event.result?.file?.mimeicon);
-            console.log("data:image/png;base64," +
-                event.result?.file?.mimeicon, img);
 
             imgs.append(img);
             link.append(imgs);
@@ -117,9 +144,13 @@ rcmail.addEventListener("plugin.nextcloud_upload_result", function(event) {
             rcmail.editor.editor.getBody().insertBefore(paragraph, sigElem);
         }
         rcmail.display_message(event.result?.file?.name + " " + rcmail.gettext("upload_success_link_inserted", "nextcloud_attachments"), "confirmation", 5000)
+        let fid = event.result?.file?.id;
+        if (fid && rcmail.env.attachments["rcmfile" + fid]) {
+            rcmail.env.attachments["rcmfile" + fid].isNextcloudAttachment = true;
+        }
     } else {
         // rcmail.show_popup_dialog(JSON.stringify(event), "Nextcloud Upload Failed");
-        console.log(event);
+        // console.log(event);
         switch(event.status) {
             case "no_config":
                 rcmail.display_message(rcmail.gettext("missing_config", "nextcloud_attachments"), "notice", 2000);
@@ -181,7 +212,7 @@ rcmail.nextcloud_login_button_click_handler = function(btn_evt, dialog, files = 
             }
             clearInterval(window.nextcloud_poll_interval);
             rcmail.display_message(rcmail.gettext("logged_in", "nextcloud_attachments"), "confirmation", 10000);
-            console.log(files);
+            // console.log(files);
             if(files !== null) {
                 let os = rcmail.env.max_filesize;
                 let size = files.map(f => f.size).reduce((sum, val) =>  sum + val, 0);
@@ -214,7 +245,7 @@ rcmail.addEventListener('init', function(evt) {
             return rcmail.__file_upload(files, post_args, props);
         }
 
-        console.log(files);
+        // console.log(files);
         files = Array.from(files);
         //calculate file size
         let size = files.map(f => f.size).reduce((sum, val) =>  sum + val, 0);
@@ -369,6 +400,36 @@ rcmail.addEventListener('init', function(evt) {
 
         // file needs no handling, pass on
         return rcmail.__file_upload(files, post_args, props);
+    }
+
+    rcmail.__remove_attchment = rcmail.remove_attachment;
+
+    rcmail.remove_attachment = function (name) {
+        if (name && rcmail.env.attachments[name]?.isNextcloudAttachment) {
+            let dialog = rcmail.show_popup_dialog(
+                rcmail.gettext("remove_from_nextcloud_question", "nextcloud_attachments"),
+                rcmail.gettext("remove_attachment", "nextcloud_attachments"), [
+                    {
+                        text: rcmail.gettext("remove_from_nextcloud", "nextcloud_attachments"),
+                        'class': 'mainaction delete',
+                        click: (e) => {
+                            this.http_post('remove-attachment', { _id:rcmail.env.compose_id, _file:name, _ncremove: true });
+                            dialog.dialog('close');
+                        }
+
+                    },
+                    {
+                        text: rcmail.gettext("keep_in_nextcloud", "nextcloud_attachments"),
+                        'class': '',
+                        click: () => {
+                            rcmail.__remove_attchment(name);
+                            dialog.dialog('close');
+                        }
+                    }]
+            );
+        } else {
+            rcmail.__remove_attchment(name);
+        }
     }
 
 });

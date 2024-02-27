@@ -1,0 +1,464 @@
+<?php
+/*
+ * Copyright (c) 2024 bbecker
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+
+
+namespace NextcloudAttachments;
+use Exception;
+use GuzzleHttp\Exception\GuzzleException;
+use GuzzleHttp\Psr7;
+use Modifiable_Mail_mime;
+use rcube_utils;
+use SimpleXMLElement;
+
+require_once dirname(__FILE__) . "/Modifiable_Mail_mime.php";
+
+trait Hooks
+{
+    /**
+     * Hook to add info to compose preferences
+     * @param $param array preferences list
+     * @return array preferences list
+     */
+    public function add_preferences(array $param): array
+    {
+        $prefs = $this->rcmail->user->get_prefs();
+
+        $server = $this->rcmail->config->get(__("server"));
+        $blocks = $param["blocks"];
+
+        $username = isset($prefs["nextcloud_login"]) ? $prefs["nextcloud_login"]["loginName"] : $this->resolve_username($this->rcmail->get_user_name());
+
+        $login_result = $this->__check_login();
+
+        $can_disconnect = isset($prefs["nextcloud_login"]);
+
+        if ($param["current"] == "compose") {
+
+            /** @noinspection JSUnresolvedReference */
+            $blocks["plugin.nextcloud_attachments"] = [
+                "name" => $this->gettext("cloud_attachments"),
+                "options" => [
+                    "server" => [
+                        "title" => $this->gettext("cloud_server"),
+                        "content" => "<a href='" . $server . "' target='_blank'>" . parse_url($server, PHP_URL_HOST) . "</a>"
+                    ],
+                    "connection" => [
+                        "title" => $this->gettext("status"),
+                        "content" => $login_result["status"] == "ok" ?
+                            $this->gettext("connected_as") . " " . $username . ($can_disconnect ? " (<a href=\"#\" onclick=\"rcmail.http_post('plugin.nextcloud_disconnect')\">" . $this->gettext("disconnect") . "</a>)" : "") :
+                            $this->gettext("not_connected") . " (<a href=\"#\" onclick=\"window.rcmail.nextcloud_login_button_click_handler(null, null)\">" . $this->gettext("connect") . "</a>)"
+                    ]
+                ]
+            ];
+        }
+
+        return ["blocks" => $blocks];
+    }
+
+    /**
+     * (message_ready hook) correct attachment parameters for nextcloud attachments where
+     * parameters couldn't be set otherwise
+     *
+     * @param array $args original message
+     * @return Modifiable_Mail_mime[] corrected message
+     */
+    public function fix_attachment(array $args): array
+    {
+        $msg = new Modifiable_Mail_mime($args["message"]);
+
+        foreach ($msg->getParts() as $key => $part) {
+            if (str_starts_with($part['c_type'], "application/nextcloud_attachment")) {
+                $url = substr(trim(explode(";", $part['c_type'])[1]), strlen("url="));
+                $part["disposition"] = "inline";
+                $part["c_type"] = "text/html";
+                $part["encoding"] = "quoted-printable"; // We don't want the base64 overhead for the few kb HTML file
+                $part["add_headers"] = [
+                    "X-Mozilla-Cloud-Part" => "cloudFile; url=" . $url
+                ];
+                $msg->setPart($key, $part);
+            }
+        }
+        return ["message" => $msg];
+    }
+
+    /**
+     * Ready hook to intercept files marked for cloud upload.
+     *
+     * We set the filesize to 0 to pass the internal filesize checking.
+     * Luckily they don't check the actual file
+     *
+     * @param $param mixed ignored
+     * @noinspection PhpUnusedParameterInspection
+     */
+    public function intercept_filesize(mixed $param): void
+    {
+        // files are marked to cloud upload
+        if (isset($_REQUEST['_target']) && $_REQUEST['_target'] == "cloud") {
+            if (isset($_FILES["_attachments"]) && count($_FILES["_attachments"]) > 0) {
+                //set file sizes to 0 so rcmail_action_mail_attachment_upload::run() will not reject the files,
+                //so we can get it from rcube_uploads::insert_uploaded_file() later
+                $_FILES["_attachments"]["size"] = array_map(function ($e) {
+                    return 0;
+                }, $_FILES["_attachments"]["size"]);
+            } else {
+                self::log($this->rcmail->get_user_name() . " - empty attachment array: " . print_r($_FILES, true));
+            }
+        }
+    }
+
+    /**
+     * Ready hook to insert our client script and style.
+     *
+     * @param $param mixed page information
+     * @noinspection PhpUnusedParameterInspection
+     */
+    public function insert_client_code(mixed $param): void
+    {
+        $section = rcube_utils::get_input_string('_section', rcube_utils::INPUT_GPC);
+
+        if ((($param["task"] == "mail" && $param["action"] == "compose") ||
+                ($param["task"] == "settings" && $param["action"] == "edit-prefs" && $section == "compose")) &&
+            !$this->is_disabled()) {
+
+            $this->load_config();
+
+
+            $this->include_script("client.js");
+            $this->include_stylesheet("client.css");
+
+            $softlimit = parse_bytes($this->rcmail->config->get(__("softlimit")));
+            $limit = parse_bytes($this->rcmail->config->get('max_message_size'));
+            $this->rcmail->output->set_env(__("softlimit"), $softlimit > $limit ? null : $softlimit);
+            $this->rcmail->output->set_env(__("behavior"), $this->rcmail->config->get(__("behavior"), "prompt"));
+        }
+    }
+
+    /**
+     * Hook to periodically check login result
+     *
+     * @noinspection PhpUnusedParameterInspection
+     */
+    public function poll($ignore): void
+    {
+        //check if there is poll endpoint
+        if (isset($_SESSION['plugins']['nextcloud_attachments']['endpoint']) && isset($_SESSION['plugins']['nextcloud_attachments']['token'])) {
+            //poll it
+            try {
+                $res = $this->client->post($_SESSION['plugins']['nextcloud_attachments']['endpoint'] . "?token=" . $_SESSION['plugins']['nextcloud_attachments']['token']);
+
+                //user finished login
+                if ($res->getStatusCode() == 200) {
+                    $body = $res->getBody()->getContents();
+                    $data = json_decode($body, true);
+                    if (isset($data['appPassword']) && isset($data['loginName'])) {
+                        //save app password to user preferences
+                        $prefs = $this->rcmail->user->get_prefs();
+                        $prefs["nextcloud_login"] = $data;
+                        $this->rcmail->user->save_prefs($prefs);
+                        unset($_SESSION['plugins']['nextcloud_attachments']);
+                        $this->rcmail->output->command('plugin.nextcloud_login_result', ['status' => "ok"]);
+                    }
+                } else if ($res->getStatusCode() != 404) { //login timed out
+                    unset($_SESSION['plugins']['nextcloud_attachments']);
+                }
+            } catch (GuzzleException $e) {
+                self::log("poll failed: " . print_r($e, true));
+            }
+        }
+    }
+
+    /**
+     * Hook to upload file
+     *
+     * Return upload information
+     *
+     * @param $data array attachment info
+     * @return array attachment info
+     */
+    public function upload(array $data): array
+    {
+        if (!isset($_REQUEST['_target']) || $_REQUEST['_target'] !== "cloud") {
+            //file not marked to cloud. we won't touch it.
+            return $data;
+        }
+
+        $prefs = $this->rcmail->user->get_prefs();
+
+        // we are not logged in, and know mail password won't work, so we are not trying anything
+        if ($this->rcmail->config->get(__("dont_try_mail_password"), false)) {
+            if (!isset($prefs["nextcloud_login"]) ||
+                empty($prefs["nextcloud_login"]["loginName"]) ||
+                empty($prefs["nextcloud_login"]["appPassword"])) {
+                return ["status" => false, "abort" => true];
+            }
+        }
+
+        //get app password and username or use rc ones
+        $username = isset($prefs["nextcloud_login"]) ? $prefs["nextcloud_login"]["loginName"] : $this->resolve_username($this->rcmail->get_user_name());
+        $password = isset($prefs["nextcloud_login"]) ? $prefs["nextcloud_login"]["appPassword"] : $this->rcmail->get_user_password();
+
+        $server = $this->rcmail->config->get(__("server"));
+        $checksum = $this->rcmail->config->get(__("checksum"), "sha256");
+
+        //server not configured
+        if (empty($server) || $username === false) {
+            $this->rcmail->output->command('plugin.nextcloud_upload_result', ['status' => 'no_config']);
+            return ["status" => false, "abort" => true];
+        }
+
+        // we are not logged in, and know mail password won't work, so we are not trying anything
+        if ($this->rcmail->config->get(__("dont_try_mail_password"), false)) {
+            if (!isset($prefs["nextcloud_login"]) ||
+                empty($prefs["nextcloud_login"]["loginName"]) ||
+                empty($prefs["nextcloud_login"]["appPassword"])) {
+                return ["status" => false, "abort" => true];
+            }
+        }
+
+        //get the attachment sub folder
+        $folder = $this->rcmail->config->get(__("folder"), "Mail Attachments");
+        $tr_folder = $this->rcmail->config->get(__("folder_translate_name"), false);
+        if (is_array($folder)) {
+            if ($tr_folder && key_exists($this->rcmail->get_user_language(), $folder)) {
+                $folder = $folder[$this->rcmail->get_user_language()];
+            } else if ($tr_folder && key_exists("en_US", $folder)) {
+                $folder = $folder["en_US"];
+            } else {
+                $folder = array_first($folder);
+            }
+        }
+
+        //full link with urlencoded folder (space must be %20 and not +)
+        $folder_uri = $server . "/remote.php/dav/files/" . $username . "/" . rawurlencode($folder);
+
+        //check folder
+        try {
+            $res = $this->client->request("PROPFIND", $folder_uri, ['auth' => [$username, $password]]);
+
+            if ($res->getStatusCode() == 404) { //folder does not exist
+                //attempt to create the folder
+                try {
+                    $res = $this->client->request("MKCOL", $folder_uri, ['auth' => [$username, $password]]);
+
+                    if ($res->getStatusCode() != 201) { //creation failed
+                        $body = $res->getBody()->getContents();
+                        try {
+                            $xml = new SimpleXMLElement($body);
+                        } catch (Exception $e) {
+                            self::log($username . " xml parsing failed: " . print_r($e, true));
+                            $xml = [];
+                        }
+
+                        $this->rcmail->output->command('plugin.nextcloud_upload_result', [
+                            'status' => 'mkdir_error',
+                            'code' => $res->getStatusCode(),
+                            'message' => $res->getReasonPhrase(),
+                            'result' => json_encode($xml)
+                        ]);
+
+                        self::log($username . " mkcol failed " . $res->getStatusCode() . PHP_EOL . $res->getBody()->getContents());
+                        return ["status" => false, "abort" => true, "error" => $res->getReasonPhrase()];
+                    }
+                } catch (GuzzleException $e) {
+                    self::log($username . " mkcol request failed: " . print_r($e, true));
+                }
+            } else if ($res->getStatusCode() > 400) { //we can't access the folder
+                self::log($username . " propfind failed " . $res->getStatusCode() . PHP_EOL . $res->getBody()->getContents());
+                $this->rcmail->output->command('plugin.nextcloud_upload_result', ['status' => 'folder_error']);
+                return ["status" => false, "abort" => true, "error" => $res->getReasonPhrase()];
+            }
+        } catch (GuzzleException $e) {
+            self::log($username . " propfind failed " . print_r($e, true));
+            $this->rcmail->output->command('plugin.nextcloud_upload_result', ['status' => 'folder_error']);
+            return ["status" => false, "abort" => true];
+        }
+
+        // resolve the folder layout
+        $folder_suffix = $this->resolve_destination_folder($folder_uri, $data["path"], $username, $password);
+        $folder .= "/".$folder_suffix;
+        $folder_uri .= "/".$folder_suffix;
+        self::log($folder_uri);
+
+        //get unique filename
+        $filename = $this->unique_filename($folder_uri, $data["name"], $username, $password);
+
+        if ($filename === false) {
+            self::log($username . " filename determination failed");
+            //it was not possible to find name
+            //too many files?
+            $this->rcmail->output->command('plugin.nextcloud_upload_result', ['status' => 'name_error']);
+            return ["status" => false, "abort" => true];
+        }
+
+        //upload file
+        $body = Psr7\Utils::tryFopen($data["path"], 'r');
+        try {
+            $res = $this->client->put($folder_uri . "/" . rawurlencode($filename), ["body" => $body, 'auth' => [$username, $password]]);
+
+            if ($res->getStatusCode() != 200 && $res->getStatusCode() != 201) {
+                $body = $res->getBody()->getContents();
+                try {
+                    $xml = new SimpleXMLElement($body);
+                } catch (Exception $e) {
+                    self::log($username . " xml parsing failed: " . print_r($e, true));
+                    $xml = [];
+                }
+
+                $this->rcmail->output->command('plugin.nextcloud_upload_result', [
+                    'status' => 'upload_error', 'message' => $res->getReasonPhrase(), 'result' => json_encode($xml)]);
+                return ["status" => false, "abort" => true, "error" => $res->getReasonPhrase()];
+            }
+        } catch (GuzzleException $e) {
+            self::log($username . " put failed: " . print_r($e, true));
+            $this->rcmail->output->command('plugin.nextcloud_upload_result', ['status' => 'upload_error']);
+            return ["status" => false, "abort" => true, "error" => $res->getReasonPhrase()];
+        }
+
+        //create share link
+        $id = rand();
+        $mime_name = str_replace("/", "-", $data["mimetype"]);
+        $mime_generic_name = str_replace("/", "-", explode("/", $data["mimetype"])[0]) . "-x-generic";
+
+        $icon_path = dirname(__FILE__) . "/icons/Yaru-mimetypes/";
+        $mime_icon = file_exists($icon_path . $mime_name . ".png") ?
+            file_get_contents($icon_path . $mime_name . ".png") : (
+            file_exists($icon_path . $mime_generic_name . ".png") ?
+                file_get_contents($icon_path . $mime_generic_name . ".png") :
+                file_get_contents($icon_path . "unknown.png"));
+
+        try {
+            $res = $this->client->post($server . "/ocs/v2.php/apps/files_sharing/api/v1/shares", [
+                "headers" => [
+                    "OCS-APIRequest" => "true"
+                ],
+                "form_params" => [
+                    "path" => $folder . "/" . $filename,
+                    "shareType" => 3,
+                    "publicUpload" => "false",
+                ],
+                'auth' => [$username, $password]
+            ]);
+
+            $body = $res->getBody()->getContents();
+
+            if ($res->getStatusCode() == 200) { //upload successful
+                $ocs = new SimpleXMLElement($body);
+                //inform client for insert to body
+                $this->rcmail->output->command("plugin.nextcloud_upload_result", [
+                    'status' => 'ok',
+                    'result' => [
+                        'url' => (string)$ocs->data->url,
+                        'file' => [
+                            'name' => $data["name"],
+                            'size' => filesize($data["path"]),
+                            'mimetype' => $data["mimetype"],
+                            'mimeicon' => base64_encode($mime_icon),
+                            'id' => $id,
+                            'group' => $data["group"],
+                        ]
+                    ]
+                ]);
+                $url = (string)$ocs->data->url;
+            } else { //link creation failed. Permission issue?
+                $body = $res->getBody()->getContents();
+                try {
+                    $xml = new SimpleXMLElement($body);
+                } catch (Exception $e) {
+                    self::log($body);
+                    self::log($username . " xml parse failed: " . print_r($e, true));
+                    $xml = [];
+                }
+                $this->rcmail->output->command('plugin.nextcloud_upload_result', [
+                    'status' => 'link_error',
+                    'code' => $res->getStatusCode(),
+                    'message' => $res->getReasonPhrase(),
+                    'result' => json_encode($xml)
+                ]);
+                return ["status" => false, "abort" => true, "error" => $res->getReasonPhrase()];
+            }
+        } catch (GuzzleException $e) {
+            self::log($username . " share file failed: " . print_r($e, true));
+            $this->rcmail->output->command('plugin.nextcloud_upload_result', ['status' => 'link_error']);
+            return ["status" => false, "abort" => true];
+        } catch (Exception $e) {
+            self::log($username . " xml parse failed: " . print_r($e, true));
+            $this->rcmail->output->command('plugin.nextcloud_upload_result', ['status' => 'link_error']);
+            return ["status" => false, "abort" => true];
+        }
+
+        //fill out template attachment HTML
+        $tmpl = file_get_contents(dirname(__FILE__) . "/attachment_tmpl.html");
+
+        $fs = filesize($data["path"]);
+        $u = ["", "k", "M", "G", "T"];
+        for ($i = 0; $fs > 800.0 && $i <= count($u); $i++) {
+            $fs /= 1024;
+        }
+
+
+        $tmpl = str_replace("%FILENAME%", $data["name"], $tmpl);
+        /** @noinspection SpellCheckingInspection */
+        $tmpl = str_replace("%FILEURL%", $url, $tmpl);
+        /** @noinspection SpellCheckingInspection */
+        $tmpl = str_replace("%SERVERURL%", $server, $tmpl);
+        $tmpl = str_replace("%FILESIZE%", round($fs, 1) . " " . $u[$i] . "B", $tmpl);
+        /** @noinspection SpellCheckingInspection */
+        $tmpl = str_replace("%ICONBLOB%", base64_encode($mime_icon), $tmpl);
+        $tmpl = str_replace("%CHECKSUM%", strtoupper($checksum) . " " . hash_file($checksum, $data["path"]), $tmpl);
+
+        // Minimize HTML
+        // https://stackoverflow.com/a/6225706
+        $search = array(
+            '/>[^\S ]+/',     // strip whitespaces after tags, except space
+            '/[^\S ]+</',     // strip whitespaces before tags, except space
+            '/(\s)+/',         // shorten multiple whitespace sequences
+            '/<!--(.|\s)*?-->/' // Remove HTML comments
+        );
+
+        $replace = array(
+            '>',
+            '<',
+            '\\1',
+            ''
+        );
+
+        $tmpl = preg_replace($search, $replace, $tmpl);
+
+        unlink($data["path"]);
+
+        //return a html page as attachment that provides the download link
+        return [
+            "id" => $id,
+            "group" => $data["group"],
+            "status" => true,
+            "name" => $data["name"] . ".html", //append html suffix
+            "mimetype" => "text/html",
+            "data" => $tmpl, //just return the few KB text, we deleted the file
+            "path" => "cloud:".$folder . "/" . $filename,
+            "size" => strlen($tmpl),
+            "target" => "cloud", //cloud attachment meta data
+            "uri" => $url . "/download",
+            "break" => true //no other plugin should process this attachment future
+        ];
+    }
+}

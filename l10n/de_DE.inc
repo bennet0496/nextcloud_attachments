@@ -26,6 +26,14 @@ $labels['upload_failed_title'] = "Nextcloud hochladen fehlgeschlagen";
 $labels['upload_warning_title'] = "Nextcloud Warnung";
 $labels['upload_failed'] = "Nextcloud hochladen fehlgeschlagen:";
 
+$labels['delete_ok'] = "Datei erfolgreich in Nextcloud gel&ouml;scht";
+$labels['delete_error_explain'] = "Das l&ouml;schen der Datei produzierte folgenden Fehler: <b>%reason%</b>. Wenn Sie diesen Fehler ignoreren m&ouml;chten, k&ouml;nnen Sie die Datei dennoch aus der Liste entfernen.";
+$labels['remove_attachment'] = "Nextcloud Anhang l&ouml;schen";
+$labels['remove_from_list'] = "Ignorieren und von Liste entfernen";
+$labels['remove_from_nextcloud_question'] = "Dies ist ein Nextcloud-Anhang. Wollen Sie diesen in Nextcloud ebenfall l&ouml;schen? Sie werden die den Anhang dennoch selbst aus dem Nachrrichtentext entfernen m&uuml;ssen";
+$labels['remove_from_nextcloud'] = "In Nextcloud entfernen";
+$labels['keep_in_nextcloud'] = "In Nextcloud behalten und aus Liste entfernen";
+
 $labels['missing_config'] = "Nextcloud Erweiterung ist nicht konfiguriert. Bitte kontaktieren Sie den Administrator!";
 $labels['cannot_mkdir'] = "Unterordner zum Hochladen konnte nicht erstellt werden:";
 $labels['folder_access'] = "Es konnte nicht auf den Ordner zugegriffen werden! Bitte pr&uuml;fen Sie die Berechtigungen oder fragen Sie einen Administrator";
