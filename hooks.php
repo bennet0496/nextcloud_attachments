@@ -44,6 +44,8 @@ trait Hooks
     {
         $prefs = $this->rcmail->user->get_prefs();
 
+        self::log($prefs);
+
         $server = $this->rcmail->config->get(__("server"));
         $blocks = $param["blocks"];
 
@@ -66,11 +68,13 @@ trait Hooks
                 $tokens[1] ?? "Y/LLLL"
             );
 
-            $layout_select = new \html_select(["id" => __("folder_layout"), "value" => $prefs[__("folder_layout")] ?? "default", "name" => "_".__("folder_layout")]);
+            $layout_select = new \html_select(["id" => __("folder_layout"), "value" => $prefs[__("user_folder_layout")] ?? "default", "name" => "_".__("folder_layout")]);
             $pp_links = new \html_checkbox(["id" => __("password_protected_links"), "value" => "1", "name" => "_".__("password_protected_links")]);
             $exp_links = new \html_checkbox(["id" => __("expire_links"), "value" => "1", "name" => "_".__("expire_links")]);
 
-            $server_format_tokens = explode(":", $this->rcmail->config->get(__("folder_layout", "flat")));
+            $server_format_tokens = explode(":", $this->rcmail->config->get(__("folder_layout"), "flat"));
+
+            self::log($server_format_tokens);
 
             $server_format = match ($server_format_tokens[0]) {
                 "flat" => $this->gettext("folder_layout_flat"),
@@ -123,32 +127,74 @@ trait Hooks
                             $this->gettext("connected_as") . " " . $username . ($can_disconnect ? " (<a href=\"#\" onclick=\"rcmail.http_post('plugin.nextcloud_disconnect')\">" . $this->gettext("disconnect") . "</a>)" : "") :
                             $this->gettext("not_connected") . " (<a href=\"#\" onclick=\"window.rcmail.nextcloud_login_button_click_handler(null, null)\">" . $this->gettext("connect") . "</a>)"
                     ],
-                    "folder_layout" => [
-                        "title" => $this->gettext("folder_layout"),
-                        "content" => $layout_select->show()
-                    ],
-                    "password_protected_links" => [
-                        "title" => $this->gettext("password_protected_links"),
-                        "content" => $pp_links->show($prefs[__("password_protected_links")] ?? "0")
-                    ],
-                    "expire_links" => [
-                        "title" => $this->gettext("expire_links"),
-                        "content" => $exp_links->show($prefs[__("expire_links")] ?? "0")
-                    ],
-                    "expire_links_after" => [
-                        "title" => $this->gettext("expire_links_after"),
-                        "content" => (new \html_inputfield([
-                            "type" => "number",
-                            "min" => "1",
-                            "id" => __("expire_links_after"),
-                            "name" => "_".__("expire_links_after"),
-                            "value" => $prefs[__("expire_links_after")] ?? $this->rcmail->config->get(__("expire_links_after"), 7)]))->show()
-                    ]
+
+
                 ]
             ];
+
+            if (!$this->rcmail->config->get("nextcloud_attachment_folder_layout_locked", true)) {
+                $blocks["plugin.nextcloud_attachments"]["options"]["folder_layout"] = [
+                    "title" => $this->gettext("folder_layout"),
+                    "content" => $layout_select->show()
+                ];
+            }
+
+            if (!$this->rcmail->config->get("nextcloud_attachment_password_protected_links_locked", true)) {
+                $def = $this->rcmail->config->get("nextcloud_attachment_password_protected_links", false) ? "1" : "0";
+                $blocks["plugin.nextcloud_attachments"]["options"]["password_protected_links"] = [
+                    "title" => $this->gettext("password_protected_links"),
+                    "content" => $pp_links->show($prefs[__("user_password_protected_links")] ?? $def)
+                ];
+            }
+
+            if (!$this->rcmail->config->get(__("expire_links_locked"), true)) {
+                $def = $this->rcmail->config->get(__("expire_links"), false);
+                $blocks["plugin.nextcloud_attachments"]["options"]["expire_links"] = [
+                    "title" => $this->gettext("expire_links"),
+                    "content" => $exp_links->show($prefs[__("user_expire_links")] ?? ($def === false ? "0" : "1"))
+                ];
+                $blocks["plugin.nextcloud_attachments"]["options"]["expire_links_after"] = [
+                    "title" => $this->gettext("expire_links_after"),
+                    "content" => (new \html_inputfield([
+                        "type" => "number",
+                        "min" => "1",
+                        "id" => __("expire_links_after"),
+                        "name" => "_".__("expire_links_after"),
+                        "value" => $prefs[__("user_expire_links_after")] ?? ($def !== false ? $def : 7)]))->show()
+                ];
+            }
         }
 
         return ["blocks" => $blocks];
+    }
+
+    private function save_preferences(array $param) : array
+    {
+        $formats = ["default", "flat", "date:Y", "date:Y/LLLL", "date:Y/LLLL/dd", "date:Y/LL", "date:Y/LL/dd",
+            "date:Y/ww","date:Y/ww/EEEE","date:Y/ww/E", "hash:sha1:2", "hash:sha1:3", "hash:sha1:4", "hash:sha1:5"];
+        $folder_layout = $_POST["_".__("folder_layout")] ?? null;
+        if (!$this->rcmail->config->get("nextcloud_attachment_folder_layout_locked", true) &&
+            in_array($folder_layout, $formats)) {
+            $param["prefs"][__("user_folder_layout")] = $folder_layout;
+        }
+
+        $pass_prot = $_POST["_".__("password_protected_links")] ?? null;
+        if (!$this->rcmail->config->get("nextcloud_attachment_password_protected_links_locked", true) && $pass_prot == 1) {
+            $param["prefs"][__("user_password_protected_links")] = true;
+        }
+
+        $expire_links = $_POST["_".__("expire_links")] ?? null;
+        $expire_links_after = $_POST["_".__("expire_links_after")] ?? null;
+        if (!$this->rcmail->config->get("nextcloud_attachment_expire_links_locked", true)) {
+            $param["prefs"][__("user_expire_links")] = ($expire_links == 1 && intval($expire_links_after) > 0);
+            if (intval($expire_links_after) > 0) {
+                $param["user_prefs"][__("expire_links_after")] = intval($expire_links_after);
+            }
+        }
+
+        self::log($param);
+
+        return $param;
     }
 
     /**

@@ -39,7 +39,7 @@ $config["nextcloud_attachment_folder_layout"] = "flat";
 // (Dis)Allow user to change the layout
 // true => layout is locked, i.e. not user-changeable
 // false => user may change the layout on their settings page
-$config["nextcloud_attachment_folder_layout_lock"] = true;
+$config["nextcloud_attachment_folder_layout_locked"] = true;
 
 // Limit to show a warning at for large attachments.
 // has to be smaller then $config['max_message_size']
@@ -64,6 +64,27 @@ $config["nextcloud_attachment_folder_translate_name"] = false;
 // Defaults to sha256
 // see https://www.php.net/manual/en/function.hash-algos.php
 $config["nextcloud_attachment_checksum"] = "sha256";
+
+// Generate Password protected link.
+// Passwords will be included in the message body only, not in the HTML attachment
+// Defaults to false
+$config["nextcloud_attachment_password_protected_links"] = false;
+
+// Allow/Disallow user to change the password protection option for themself
+// true => user can not change the setting
+// false => user may change the setting
+$config["nextcloud_attachment_password_protected_links_locked"] = true;
+
+// Expire share links after amount of days.
+// Links will expire on the last valid day at 11:59:59pm AoE-Time
+// Setting to "false" or negative value disables link expiry
+// Defaults to false
+$config["nextcloud_attachment_expire_links"] = false;
+
+// Allow/Disallow user to change the link expiry option for themself
+// true => user can not change the setting
+// false => user may change the setting
+$config["nextcloud_attachment_expire_links_locked"] = true;
 
 // List of users to exclude
 // They won't be able to interact with the plugin at all
