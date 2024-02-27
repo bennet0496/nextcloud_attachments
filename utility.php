@@ -301,7 +301,7 @@ trait Utility
             }
             $depth = min(count($tokens) > 2 ? $tokens[2] : 2, $hash_byte_len);
             $path_tokens = array_slice(str_split($path_hash, 2), 0, $depth);
-            $path_tokens[] = substr($path_hash, $depth*2);
+
             //drop to folder creation below
         } else if (str_starts_with($folder_layout, "date")) {
             $tokens = explode(":", $folder_layout);
@@ -313,6 +313,7 @@ trait Utility
                 IntlDateFormatter::GREGORIAN,
                 $tokens[1] ?? "Y/LLLL"
             );
+
             $path = datefmt_format($date_format, time());
             $path_tokens = explode("/", trim($path, "/"));
             //drop to folder creation below
