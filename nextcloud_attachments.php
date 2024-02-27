@@ -114,33 +114,7 @@ class nextcloud_attachments extends rcube_plugin
 
         $this->add_hook("preferences_list", function ($param) { return $this->add_preferences($param); });
 
-        $this->add_hook("attachment_delete", function ($param) {
-            if ($_POST["_ncremove"] === "true" &&
-                str_starts_with($param["path"], "cloud:") && $param["target"] === "cloud") {
-                $prefs = $this->rcmail->user->get_prefs();
-
-                $server = $this->rcmail->config->get(__("server"));
-                $username = isset($prefs["nextcloud_login"]) ? $prefs["nextcloud_login"]["loginName"] : $this->resolve_username($this->rcmail->get_user_name());
-                $password = isset($prefs["nextcloud_login"]) ? $prefs["nextcloud_login"]["appPassword"] : $this->rcmail->get_user_password();
-
-                $path = implode("/", array_map(function ($tok) { return rawurlencode($tok); },
-                    explode("/", substr($param["path"], strlen("cloud:")))));
-                try {
-                    $res = $this->client->delete($server . "/remote.php/dav/files/" . $username . "/" . $path, ["auth" => [$username, $password]]);
-                    if($res->getStatusCode() >= 400) {
-                        $this->rcmail->output->command('plugin.nextcloud_delete_result', ['status' => 'error', 'message' => $res->getReasonPhrase(), 'file' => $param['id']]);
-                        return ["status" => false, "abort" => true, "error" => $res->getReasonPhrase()];
-                    } else {
-                        return ["status" => "ok"];
-                    }
-                } catch (GuzzleException $e) {
-                    $this->rcmail->output->command('plugin.nextcloud_delete_result', ['status' => 'error', 'file' => $param['id']]);
-                    self::log($username . " delete request failed: " . print_r($e, true));
-                }
-            }
-
-            return $param;
-        });
+        $this->add_hook("attachment_delete", function ($param) { return $this->delete($param); });
 
     }
 }

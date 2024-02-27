@@ -217,19 +217,14 @@ $config['ldap_public']['public'] = array(
 ```
 
 ## Planned Features
- - [x] Give a selector to upload or attach for any upload similar to Outlook.com
- - [x] Manage the Nextcloud connection in the user settings
-   - currently, if the user removes the password in Nextcloud, the plugin will fail as it
-     thinks it has a password, but it does not work
  - [ ] Give the option for (additional) user specific Nextcloud servers
  - [ ] Give the option configure password protected links (system or user)
  - [ ] Wrap WebDAV request for easier adaptation to other Servers
  - [ ] Allow to define global user
  - [ ] Add folder to `sync-exclude.lst` to prevent desktop clients from (automatically) downloading the folder
- - [ ] Option for folder organization
+ - [x] Option for folder organization
    - by year and month
    - by hash
- - [x] i18n, l10n
 
 ## Credits
 
