@@ -14,7 +14,7 @@ email and Nextcloud, e.g. company Installations
 
 ## Config
 
-The plugin itself has 4 core settings. The server, the username strategy and the sub folder.
+The plugin itself has a handful core settings. The server, the username strategy and the sub folder.
 
 ```php
 <?php

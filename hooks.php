@@ -26,6 +26,7 @@ namespace NextcloudAttachments;
 use Exception;
 use GuzzleHttp\Exception\GuzzleException;
 use GuzzleHttp\Psr7;
+use IntlDateFormatter;
 use Modifiable_Mail_mime;
 use rcube_utils;
 use SimpleXMLElement;
@@ -53,6 +54,60 @@ trait Hooks
         $can_disconnect = isset($prefs["nextcloud_login"]);
 
         if ($param["current"] == "compose") {
+            //get the attachment sub folder
+            $folder = $this->get_folder();
+
+            $date_format = datefmt_create(
+                $this->rcmail->get_user_language(),
+                IntlDateFormatter::FULL,
+                IntlDateFormatter::FULL,
+                null,
+                IntlDateFormatter::GREGORIAN,
+                $tokens[1] ?? "Y/LLLL"
+            );
+
+            $layout_select = new \html_select(["id" => __("folder_layout"), "value" => $prefs[__("folder_layout")] ?? "default", "name" => "_".__("folder_layout")]);
+            $pp_links = new \html_checkbox(["id" => __("password_protected_links"), "value" => "1", "name" => "_".__("password_protected_links")]);
+            $exp_links = new \html_checkbox(["id" => __("expire_links"), "value" => "1", "name" => "_".__("expire_links")]);
+
+            $server_format_tokens = explode(":", $this->rcmail->config->get(__("folder_layout", "flat")));
+
+            $server_format = match ($server_format_tokens[0]) {
+                "flat" => $this->gettext("folder_layout_flat"),
+                "date" => $this->gettext("folder_layout_date"). " (/" . $folder . "/" . (
+                    function ($fmt) use ($date_format) {
+                        $date_format->setPattern($fmt ?? "Y/LLLL");
+                        return $date_format->format(time());
+                    }
+                    )($server_format_tokens[1] ?? "Y/LLLL")."/...)",
+                "hash" => $this->gettext("folder_layout_hash"). " (/" . $folder . "/" .(
+                    function ($method, $depth) {
+                        $hash = hash($method, "");
+                        $hash_bytes = str_split($hash, 2);
+                        $hash_n_bytes = array_slice($hash_bytes, 0, $depth);
+                        return implode("/", $hash_n_bytes) . substr($hash, 2 * $depth);
+                    })($server_format_tokens[1] ?? "sha1", $server_format_tokens[2] ?? 2)."/...)"
+            };
+
+            $layout_select->add([
+                $this->gettext("folder_layout_default").$server_format,
+                $this->gettext("folder_layout_flat")
+            ], ["default", "flat"]);
+
+            $formats = ["Y", "Y/LLLL", "Y/LLLL/dd", "Y/LL", "Y/LL/dd", "Y/ww","Y/ww/EEEE","Y/ww/E"];
+
+            foreach ($formats as $format) {
+                $date_format->setPattern($format);
+                $ex = $date_format->format(time());
+                $layout_select->add($this->gettext("folder_layout_date_".$format)." (/".$folder."/".$ex."/...)", "date:".$format);
+            }
+
+            $layout_select->add([
+                $this->gettext("folder_layout_hash")." (/".$folder."/ad/c8/...)",
+                $this->gettext("folder_layout_hash")." (/".$folder."/ad/c8/3b/...)",
+                $this->gettext("folder_layout_hash")." (/".$folder."/ad/c8/3b/19/...)",
+                $this->gettext("folder_layout_hash")." (/".$folder."/ad/c8/3b/19/e7/...)",
+            ], ["hash:sha1:2", "hash:sha1:3", "hash:sha1:4", "hash:sha1:5"]);
 
             /** @noinspection JSUnresolvedReference */
             $blocks["plugin.nextcloud_attachments"] = [
@@ -67,6 +122,27 @@ trait Hooks
                         "content" => $login_result["status"] == "ok" ?
                             $this->gettext("connected_as") . " " . $username . ($can_disconnect ? " (<a href=\"#\" onclick=\"rcmail.http_post('plugin.nextcloud_disconnect')\">" . $this->gettext("disconnect") . "</a>)" : "") :
                             $this->gettext("not_connected") . " (<a href=\"#\" onclick=\"window.rcmail.nextcloud_login_button_click_handler(null, null)\">" . $this->gettext("connect") . "</a>)"
+                    ],
+                    "folder_layout" => [
+                        "title" => $this->gettext("folder_layout"),
+                        "content" => $layout_select->show()
+                    ],
+                    "password_protected_links" => [
+                        "title" => $this->gettext("password_protected_links"),
+                        "content" => $pp_links->show($prefs[__("password_protected_links")] ?? "0")
+                    ],
+                    "expire_links" => [
+                        "title" => $this->gettext("expire_links"),
+                        "content" => $exp_links->show($prefs[__("expire_links")] ?? "0")
+                    ],
+                    "expire_links_after" => [
+                        "title" => $this->gettext("expire_links_after"),
+                        "content" => (new \html_inputfield([
+                            "type" => "number",
+                            "min" => "1",
+                            "id" => __("expire_links_after"),
+                            "name" => "_".__("expire_links_after"),
+                            "value" => $prefs[__("expire_links_after")] ?? $this->rcmail->config->get(__("expire_links_after"), 7)]))->show()
                     ]
                 ]
             ];
@@ -236,17 +312,7 @@ trait Hooks
         }
 
         //get the attachment sub folder
-        $folder = $this->rcmail->config->get(__("folder"), "Mail Attachments");
-        $tr_folder = $this->rcmail->config->get(__("folder_translate_name"), false);
-        if (is_array($folder)) {
-            if ($tr_folder && key_exists($this->rcmail->get_user_language(), $folder)) {
-                $folder = $folder[$this->rcmail->get_user_language()];
-            } else if ($tr_folder && key_exists("en_US", $folder)) {
-                $folder = $folder["en_US"];
-            } else {
-                $folder = array_first($folder);
-            }
-        }
+        $folder = $this->get_folder();
 
         //full link with urlencoded folder (space must be %20 and not +)
         $folder_uri = $server . "/remote.php/dav/files/" . $username . "/" . rawurlencode($folder);
@@ -495,5 +561,24 @@ trait Hooks
         }
 
         return $param;
+    }
+
+    /**
+     * @return mixed
+     */
+    protected function get_folder(): mixed
+    {
+        $folder = $this->rcmail->config->get(__("folder"), "Mail Attachments");
+        $tr_folder = $this->rcmail->config->get(__("folder_translate_name"), false);
+        if (is_array($folder)) {
+            if ($tr_folder && key_exists($this->rcmail->get_user_language(), $folder)) {
+                $folder = $folder[$this->rcmail->get_user_language()];
+            } else if ($tr_folder && key_exists("en_US", $folder)) {
+                $folder = $folder["en_US"];
+            } else {
+                $folder = array_first($folder);
+            }
+        }
+        return $folder;
     }
 }

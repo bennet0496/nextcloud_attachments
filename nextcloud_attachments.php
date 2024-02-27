@@ -114,6 +114,8 @@ class nextcloud_attachments extends rcube_plugin
 
         $this->add_hook("preferences_list", function ($param) { return $this->add_preferences($param); });
 
+        $this->add_hook("preferences_save", function ($param) { self::log($param); return $param; });
+
         $this->add_hook("attachment_delete", function ($param) { return $this->delete($param); });
 
     }

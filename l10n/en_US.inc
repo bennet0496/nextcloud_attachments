@@ -50,4 +50,24 @@ $labels['disconnect'] = "disconnect";
 $labels['connect'] = "connect";
 $labels['not_connected'] = "Not connected";
 
+$labels['folder_layout'] = "Folder Layout";
+$labels['folder_layout_default'] = "Server default: ";
+$labels['folder_layout_flat'] = "Everything in one folder";
+$labels['folder_layout_hash'] = "Organize by leading file-hash bytes";
+$labels['folder_layout_date'] = "Organize by date";
+$labels['folder_layout_date_Y'] = "Organize by year";
+$labels['folder_layout_date_Y/LLLL'] = "Organize by year and month";
+$labels['folder_layout_date_Y/LLLL/dd'] = "Organize by year, month and week of month";
+$labels['folder_layout_date_Y/LL'] = "Organize by year and month";
+$labels['folder_layout_date_Y/LL/dd'] = "Organize by year, month and week of month";
+$labels['folder_layout_date_Y/ww'] = "Organize by year and calendar week";
+$labels['folder_layout_date_Y/ww/EEEE'] = "Organize by year, calendar week and weekday";
+$labels['folder_layout_date_Y/ww/E'] = "Organize by year, calendar week and weekday";
+
+$labels['password_protected_links'] = "Generate password protected Links";
+$labels['expire_links'] = "Set expiry date for links";
+$labels['expire_links_after'] = "Days to expire links after";
+
+
+
 
