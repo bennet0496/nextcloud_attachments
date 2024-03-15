@@ -68,6 +68,9 @@ $labels['password_protected_links'] = "Generate password protected Links";
 $labels['expire_links'] = "Set expiry date for links";
 $labels['expire_links_after'] = "Days to expire links after";
 
+$labels['password'] = "Password";
+$labels['valid_until'] = "Valid until";
+
 
 
 

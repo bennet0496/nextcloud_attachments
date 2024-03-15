@@ -170,6 +170,10 @@ trait Hooks
 
     private function save_preferences(array $param) : array
     {
+        if ($param["section"] != "compose") {
+            return $param;
+        }
+
         $formats = ["default", "flat", "date:Y", "date:Y/LLLL", "date:Y/LLLL/dd", "date:Y/LL", "date:Y/LL/dd",
             "date:Y/ww","date:Y/ww/EEEE","date:Y/ww/E", "hash:sha1:2", "hash:sha1:3", "hash:sha1:4", "hash:sha1:5"];
         $folder_layout = $_POST["_".__("folder_layout")] ?? null;
@@ -188,7 +192,7 @@ trait Hooks
         if (!$this->rcmail->config->get("nextcloud_attachment_expire_links_locked", true)) {
             $param["prefs"][__("user_expire_links")] = ($expire_links == 1 && intval($expire_links_after) > 0);
             if (intval($expire_links_after) > 0) {
-                $param["user_prefs"][__("expire_links_after")] = intval($expire_links_after);
+                $param["prefs"][__("user_expire_links_after")] = intval($expire_links_after);
             }
         }
 
@@ -458,7 +462,42 @@ trait Hooks
                 file_get_contents($icon_path . $mime_generic_name . ".png") :
                 file_get_contents($icon_path . "unknown.png"));
 
+
+        $exp_links = $this->rcmail->config->get(__("expire_links"), false);
+        $exp_links_lock = $this->rcmail->config->get(__("expire_links_locked"), false);
+        $exp_links_user = $prefs[__("user_expire_links")] ? $prefs[__("user_expire_links_after")] : false;
+
+        $form_params = [];
+        if ($exp_links > 0 || (!$exp_links_lock && $exp_links_user)) {
+            $expiry_days = $exp_links ?
+                                ($exp_links_lock ? $exp_links : ($exp_links_user ?: 7)) : // global defined
+                                ($exp_links_lock ? 7 : (($exp_links_user ?: 7))); // global undefined
+            $expire_date = new \DateTime();
+            $interval = \DateInterval::createFromDateString($expiry_days ." days");
+
+            $expire_date->add($interval);
+
+            $form_params["expireDate"] = $expire_date->format(DATE_ATOM);
+        }
+
+        $pass_links = $this->rcmail->config->get(__("password_protected_links"), false);
+        $pass_links_lock = $this->rcmail->config->get(__("password_protected_links_locked"), false);
+        $pass_links_user = $prefs[__("user_password_protected_links")] ?? false;
+
+        if ($pass_links || (!$pass_links_lock && $pass_links_user)) {
+            $share_password = "";
+            while(strlen($share_password) <= 12) {
+                $char = openssl_random_pseudo_bytes(1); //ascii 0-z
+                if (preg_match("/[a-zA-Z0-9]/", $char)) {
+                    $share_password .= $char;
+                }
+            }
+            $form_params["password"] = $share_password;
+            self::log($share_password);
+        }
+
         try {
+            self::log($form_params);
             $res = $this->client->post($server . "/ocs/v2.php/apps/files_sharing/api/v1/shares", [
                 "headers" => [
                     "OCS-APIRequest" => "true"
@@ -467,12 +506,13 @@ trait Hooks
                     "path" => $folder . "/" . $filename,
                     "shareType" => 3,
                     "publicUpload" => "false",
+                    ...$form_params
                 ],
                 'auth' => [$username, $password]
             ]);
 
             $body = $res->getBody()->getContents();
-
+            self::log($form_params);
             if ($res->getStatusCode() == 200) { //upload successful
                 $ocs = new SimpleXMLElement($body);
                 //inform client for insert to body
@@ -487,6 +527,7 @@ trait Hooks
                             'mimeicon' => base64_encode($mime_icon),
                             'id' => $id,
                             'group' => $data["group"],
+                            ...$form_params
                         ]
                     ]
                 ]);
@@ -537,6 +578,27 @@ trait Hooks
         /** @noinspection SpellCheckingInspection */
         $tmpl = str_replace("%ICONBLOB%", base64_encode($mime_icon), $tmpl);
         $tmpl = str_replace("%CHECKSUM%", strtoupper($checksum) . " " . hash_file($checksum, $data["path"]), $tmpl);
+
+        $icon_rows = 4;
+        if (isset($form_params["password"])){
+            $tmpl = str_replace("%PASSWORD%", $form_params["password"], $tmpl);
+            $tmpl = str_replace("%BEGINPASSWORD%", "", $tmpl);
+            $tmpl = str_replace("%ENDPASSWORD%", "", $tmpl);
+            $icon_rows++;
+        } else {
+            $tmpl = preg_replace("/%BEGINPASSWORD%.*?%ENDPASSWORD%/", "", $tmpl);
+        }
+
+        if (isset($form_params["expireDate"]) && isset($expire_date)){
+            $tmpl = str_replace("%VALIDUNTIL%", $expire_date->format("Y-m-d"), $tmpl);
+            $tmpl = str_replace("%BEGINVALIDUNTIL%", "", $tmpl);
+            $tmpl = str_replace("%ENDVALIDUNTIL%", "", $tmpl);
+            $icon_rows++;
+        } else {
+            $tmpl = preg_replace("/%BEGINVALIDUNTIL%.*?%ENDVALIDUNTIL%/", "", $tmpl);
+        }
+
+        $tmpl = str_replace("%ICONSPAN%", $icon_rows, $tmpl);
 
         // Minimize HTML
         // https://stackoverflow.com/a/6225706

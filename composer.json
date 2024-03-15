@@ -21,7 +21,8 @@
         "guzzlehttp/guzzle": "^7.8",
         "ext-simplexml": "*",
         "ext-json": "*",
-      "ext-intl": "*"
+      "ext-intl": "*",
+      "ext-openssl": "*"
     },
     "extra": {
         "roundcube": {

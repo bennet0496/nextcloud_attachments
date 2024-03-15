@@ -87,6 +87,16 @@ rcmail.addEventListener("plugin.nextcloud_upload_result", function(event) {
             let attach_text = "\n" + event.result?.file?.name +
                 " (" + size.toFixed(1).toLocaleString() + " " + unit[i] + "B) <"
                 + event.result?.url + ">" + "\n";
+            console.log(event.result);
+            if (event.result?.file?.password !== undefined && event.result?.file?.password !== null) {
+                attach_text += rcmail.gettext("password", "nextcloud_attachments") + ": " + event.result.file.password + "\n";
+            }
+
+            if (event.result?.file?.expireDate !== undefined && event.result?.file?.expireDate !== null) {
+                let dt = new Date(event.result.file.expireDate);
+                attach_text += rcmail.gettext("valid_until", "nextcloud_attachments") + ": " + dt.toLocaleDateString() + "\n";
+            }
+
             //insert before signature if one exists
             if(sig && this.rcmail.env.signatures && this.rcmail.env.signatures[sig]) {
                 sig = this.rcmail.env.signatures[sig].text;
@@ -116,7 +126,7 @@ rcmail.addEventListener("plugin.nextcloud_upload_result", function(event) {
 
             let fn = document.createElement("span");
             fn.innerText = event.result?.file?.name + "\n";
-            fn.style.cssText = "grid-area: 1 / 1;font-size: medium; max-width: 280px; text-overflow: ellipsis; overflow-x: hidden; width: fit-content";
+            fn.style.cssText = "grid-area: 1 / 1;font-size: medium; max-width: 280px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; width: fit-content";
             link.append(fn);
 
             let se = document.createElement("span");
@@ -126,11 +136,37 @@ rcmail.addEventListener("plugin.nextcloud_upload_result", function(event) {
 
             let url = document.createElement("span");
             url.innerText = event.result?.url;
-            url.style.cssText = "grid-area: 2 / 1 / span 1 / span 3;color: rgb(100,100,100); align-self: end; font-size: small; max-width: 320px; text-overflow: ellipsis; overflow-x: hidden; width: fit-content";
+            url.style.cssText = "grid-area: 2 / 1 / span 1 / span 3;color: rgb(100,100,100); align-self: end; font-size: small; /*max-width: 320px; text-overflow: ellipsis; overflow: hidden;*/ white-space: nowrap; width: fit-content";
             link.append(url);
 
+            let has_pass = false;
+            if (event.result?.file?.password !== undefined && event.result?.file?.password !== null) {
+                let pwe = document.createElement("span");
+                let pwtt = document.createElement("code");
+                pwtt.style.fontFamily = "monospace";
+                pwtt.style.fontSize = "13px";
+                pwtt.innerText = event.result.file.password
+                pwe.innerText = rcmail.gettext("password", "nextcloud_attachments") + ": ";
+                pwe.append(pwtt);
+                pwe.style.cssText = "grid-area: 3 / 1 / span 1 / span 3;color: rgb(100,100,100); align-self: end; font-size: small; max-width: 320px; text-overflow: ellipsis; overflow-x: hidden; width: fit-content";
+                link.append(pwe);
+                has_pass = true;
+            }
+
+            let has_expire = false;
+            if (event.result?.file?.expireDate !== undefined && event.result?.file?.expireDate !== null) {
+                let row = has_pass ? 4 : 3;
+                let dte = document.createElement("span");
+                let dt = new Date(event.result.file.expireDate);
+                dte.innerText = rcmail.gettext("valid_until", "nextcloud_attachments") + ": " + dt.toLocaleDateString();
+                dte.style.cssText = "grid-area: " + row + " / 1 / span 1 / span 3;color: rgb(100,100,100); align-self: end; font-size: small; max-width: 320px; text-overflow: ellipsis; overflow-x: hidden; width: fit-content";
+                link.append(dte);
+                has_expire = true;
+            }
+
             let imgs = document.createElement("span");
-            imgs.style.cssText = "grid-area: 1 / 4 / span 3 / span 1; align-self: center";
+            let rowspan = 3 + (has_pass ? 1 : 0) + (has_expire ? 1 : 0);
+            imgs.style.cssText = "grid-area: 1 / 4 / span "+rowspan+" / span 1; align-self: center";
 
             let img = document.createElement("img");
             img.setAttribute('src', "data:image/png;base64," + event.result?.file?.mimeicon);

@@ -35,21 +35,22 @@ function __(string $val): string
 trait Utility
 {
 
-
-    private static function log($line): void
+    private static function log(...$lines): void
     {
-        $bt = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2)[1];
-        $func = $bt["function"];
-        $cls = $bt["class"];
-        if (!is_string($line)) {
-            $line = print_r($line, true);
-        }
-        $lines = explode(PHP_EOL, $line);
-        rcmail::write_log(NC_ATTACH_LOG_FILE, "[" . NC_ATTACH_PREFIX . "] {". $cls . "::" . $func . "} " . $lines[0]);
-        unset($lines[0]);
-        if (count($lines) > 0) {
-            foreach ($lines as $l) {
-                rcmail::write_log(NC_ATTACH_LOG_FILE, str_pad("...", strlen("[" . NC_ATTACH_PREFIX . "] "), " ", STR_PAD_BOTH). "{".$cls . "::" . $func."} " . $l);
+        foreach ($lines as $line) {
+            $bt = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2)[1];
+            $func = $bt["function"];
+            $cls = $bt["class"];
+            if (!is_string($line)) {
+                $line = print_r($line, true);
+            }
+            $llines = explode(PHP_EOL, $line);
+            rcmail::write_log(NC_ATTACH_LOG_FILE, "[" . NC_ATTACH_PREFIX . "] {" . $cls . "::" . $func . "} " . $llines[0]);
+            unset($llines[0]);
+            if (count($llines) > 0) {
+                foreach ($llines as $l) {
+                    rcmail::write_log(NC_ATTACH_LOG_FILE, str_pad("...", strlen("[" . NC_ATTACH_PREFIX . "] "), " ", STR_PAD_BOTH) . "{" . $cls . "::" . $func . "} " . $l);
+                }
             }
         }
     }

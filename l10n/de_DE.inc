@@ -48,4 +48,5 @@ $labels['disconnect'] = "trennen";
 $labels['connect'] = "verbinden";
 $labels['not_connected'] = "Nicht verbunden";
 
-
+$labels['password'] = "Passwort";
+$labels['valid_until'] = "Gültig bis";
