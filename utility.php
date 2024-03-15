@@ -339,4 +339,21 @@ trait Utility
 
         return implode("/", $path_tokens);
     }
+
+    private function update_exclude(string $username, string $password, string $base_uri, string $folder): void
+    {
+        try{
+            $res = $this->client->get( $base_uri. "/.sync-exclude.lst", ['auth' => [$username, $password]]);
+            $list = [$folder];
+            if ($res->getStatusCode() < 300) {
+                $list = explode(PHP_EOL, $res->getBody()->getContents());
+                if (!preg_grep("/^".$folder."\/?$/", $list)) {
+                    $list[] = $folder;
+                }
+            }
+            $this->client->put($base_uri. "/.sync-exclude.lst", ['auth' => [$username, $password], 'body' => implode(PHP_EOL, $list)]);
+        } catch (GuzzleException $e) {
+            self::log($e);
+        }
+    }
 }
