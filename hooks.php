@@ -374,7 +374,9 @@ trait Hooks
             if ($res->getStatusCode() == 404) { //folder does not exist
                 //attempt to create the folder
                 try {
-                    $this->update_exclude($username, $password, $server . "/remote.php/dav/files/" . $username, $folder);
+                    if ($this->rcmail->config->get(__("sync_exclude_lst"), false)) {
+                        $this->update_exclude($username, $password, $server . "/remote.php/dav/files/" . $username, $folder);
+                    }
                     $res = $this->client->request("MKCOL", $folder_uri, ['auth' => [$username, $password]]);
 
                     if ($res->getStatusCode() != 201) { //creation failed

@@ -218,13 +218,9 @@ $config['ldap_public']['public'] = array(
 
 ## Planned Features
  - [ ] Give the option for (additional) user specific Nextcloud servers
- - [x] Give the option configure password protected links (system or user)
  - [ ] Wrap WebDAV request for easier adaptation to other Servers
  - [ ] Allow to define global user
- - [ ] Add folder to `sync-exclude.lst` to prevent desktop clients from (automatically) downloading the folder
- - [x] Option for folder organization
-   - by year and month
-   - by hash
+ - [x] Add folder to `sync-exclude.lst` to prevent desktop clients from (automatically) downloading the folder
 
 ## Credits
 

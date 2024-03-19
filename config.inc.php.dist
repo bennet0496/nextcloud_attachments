@@ -86,6 +86,10 @@ $config["nextcloud_attachment_expire_links"] = false;
 // false => user may change the setting
 $config["nextcloud_attachment_expire_links_locked"] = true;
 
+// Automatically add Folder to .sync-exclude.lst in order to prevent
+// Clients from automatically Downloading the Attachment folder
+$config["nextcloud_attachment_sync_exclude_lst"] = false;
+
 // List of users to exclude
 // They won't be able to interact with the plugin at all
 // No prompts, no automatic uploading, no settings.
