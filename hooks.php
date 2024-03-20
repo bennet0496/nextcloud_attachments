@@ -44,7 +44,7 @@ trait Hooks
     {
         $prefs = $this->rcmail->user->get_prefs();
 
-        self::log($prefs);
+//        self::log($prefs);
 
         $server = $this->rcmail->config->get(__("server"));
         $blocks = $param["blocks"];
@@ -74,7 +74,7 @@ trait Hooks
 
             $server_format_tokens = explode(":", $this->rcmail->config->get(__("folder_layout"), "flat"));
 
-            self::log($server_format_tokens);
+//            self::log($server_format_tokens);
 
             $server_format = match ($server_format_tokens[0]) {
                 "flat" => $this->gettext("folder_layout_flat"),
@@ -196,7 +196,7 @@ trait Hooks
             }
         }
 
-        self::log($param);
+//        self::log($param);
 
         return $param;
     }
@@ -416,7 +416,7 @@ trait Hooks
         $folder_suffix = $this->resolve_destination_folder($folder_uri, $data["path"], $username, $password);
         $folder .= "/".$folder_suffix;
         $folder_uri .= "/".$folder_suffix;
-        self::log($folder_uri);
+//        self::log($folder_uri);
 
         //get unique filename
         $filename = $this->unique_filename($folder_uri, $data["name"], $username, $password);
@@ -496,11 +496,11 @@ trait Hooks
                 }
             }
             $form_params["password"] = $share_password;
-            self::log($share_password);
+//            self::log($share_password);
         }
 
         try {
-            self::log($form_params);
+//            self::log($form_params);
             $res = $this->client->post($server . "/ocs/v2.php/apps/files_sharing/api/v1/shares", [
                 "headers" => [
                     "OCS-APIRequest" => "true"
@@ -515,7 +515,7 @@ trait Hooks
             ]);
 
             $body = $res->getBody()->getContents();
-            self::log($form_params);
+//            self::log($form_params);
             if ($res->getStatusCode() == 200) { //upload successful
                 $ocs = new SimpleXMLElement($body);
                 //inform client for insert to body
