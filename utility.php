@@ -290,7 +290,18 @@ trait Utility
     /** @noinspection PhpUnusedPrivateMethodInspection */
     private function resolve_destination_folder(string $folder_uri, string $file_path, string $username, string $password) : string | false
     {
-        $folder_layout = $this->rcmail->config->get(__("folder_layout"), "flat");
+        $folder_layout_locked = $this->rcmail->config->get(__("folder_layout_locked"), true);
+
+        if ($folder_layout_locked) {
+            $folder_layout = $this->rcmail->config->get(__("folder_layout"), "flat");
+        } else {
+            $prefs = $this->rcmail->user->get_prefs();
+            $user_folder_layout = $prefs[__("user_folder_layout")];
+            $folder_layout = match ($user_folder_layout) {
+                "default", null => $this->rcmail->config->get(__("folder_layout"), "flat"),
+                default => $prefs[__("user_folder_layout")]
+            };
+        }
 
         if (str_starts_with($folder_layout, "hash")) {
             $tokens = explode(":", $folder_layout);
@@ -319,7 +330,7 @@ trait Utility
             $path_tokens = explode("/", trim($path, "/"));
             //drop to folder creation below
         } else {
-            return $folder_uri;
+            return "";
         }
 
         for($i=1; $i <= count($path_tokens); $i++) {
