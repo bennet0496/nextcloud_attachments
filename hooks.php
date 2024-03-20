@@ -44,7 +44,7 @@ trait Hooks
     {
         $prefs = $this->rcmail->user->get_prefs();
 
-        self::log($prefs);
+//        self::log($prefs);
 
         $server = $this->rcmail->config->get(__("server"));
         $blocks = $param["blocks"];
@@ -196,7 +196,7 @@ trait Hooks
             }
         }
 
-        self::log($param);
+//        self::log($param);
 
         return $param;
     }
