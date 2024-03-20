@@ -31,7 +31,7 @@ if (!class_exists("GuzzleHttp\Client")) {
 
 const NC_ATTACH_PREFIX = "nextcloud_attachment";
 const NC_ATTACH_LOG_FILE = "ncattach";
-const NC_ATTACH_VERSION = "1.3";
+const NC_ATTACH_VERSION = "1.4";
 
 require_once dirname(__FILE__) . "/utility.php";
 require_once dirname(__FILE__) . "/actions.php";
