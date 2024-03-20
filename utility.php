@@ -248,7 +248,7 @@ trait Utility
         $imap_user = empty($_SESSION['username']) ? $mail_local : $_SESSION['username'];
 
         return str_replace(["%s", "%i", "%e", "%l", "%u", "%d", "%h"],
-            [$user, $imap_user, $mail, $mail_local, $mail_local, $mail_domain, $_SESSION['storage_host']],
+            [$user, $imap_user, $mail, $mail_local, $mail_local, $mail_domain, $_SESSION['storage_host'] ?? ""],
             $username_tmpl);
     }
 
