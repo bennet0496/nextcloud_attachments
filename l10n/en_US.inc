@@ -9,9 +9,9 @@ $labels['login_and_link_file'] = "Login and share Link";
 
 $labels['file_too_big'] = "File Too Big";
 
-$labels['file_too_big_not_logged_in_explain'] = "The file is larger then %limit% and can't be attached. After connecting the your Nextcloud account below, you may send it anyway, by sharing it as file-link instead.";
+$labels['file_too_big_not_logged_in_explain'] = "The file is larger than %limit% and can't be attached. After connecting to your Nextcloud account below, you may send it anyway, by sharing it as file-link instead.";
 
-$labels['file_too_big_explain'] = "The file is larger then %limit% and can't be attached. You can share it as Nextcloud file-link instead.";
+$labels['file_too_big_explain'] = "The file is larger than %limit% and can't be attached. You can share it as Nextcloud file-link instead.";
 
 $labels['file_big'] = "How do You Want to Share the File?";
 $labels['file_big_explain'] = "The file is quite large: %size%. You can keep your emails small by sharing it as a file-link instead.";
@@ -20,17 +20,17 @@ $labels['file_big_not_logged_in_explain'] = "The file is quite large: %size%. Yo
 $labels['link_file'] = "Upload and share link";
 $labels['attach'] = "Attach copy";
 
-$labels['upload_success_link_inserted'] = "successfully uploaded to Nextcloud and link inserted";
+$labels['upload_success_link_inserted'] = "Successfully uploaded to Nextcloud and link inserted";
 
 $labels['upload_failed_title'] = "Nextcloud Upload Failed";
 $labels['upload_warning_title'] = "Nextcloud Warning";
 $labels['upload_failed'] = "Nextcloud Upload Failed:";
 
 $labels['delete_ok'] = "File deleted from Nextcloud successfully";
-$labels['delete_error_explain'] = "File deletion failed with the following reason code: <b>%reason%</b>. If you want to ignore the error you can delete the file from the attachment list anyway.";
+$labels['delete_error_explain'] = "File deletion failed with the following reason code: <b>%reason%</b>. If you want to ignore the error, you can delete the file from the attachment list anyway.";
 $labels['remove_attachment'] = "Remove Nextcloud Attachment";
 $labels['remove_from_list'] = "Ignore and remove from list";
-$labels['remove_from_nextcloud_question'] = "This is a Nextcloud attachment. Do want to delete it from Nextcloud as well? However you will still need to remove the attachment from the message text yourself.";
+$labels['remove_from_nextcloud_question'] = "This is a Nextcloud attachment. Do want to delete it from Nextcloud as well? However, you will still need to remove the attachment from the message text yourself.";
 $labels['remove_from_nextcloud'] = "Remove from Nextcloud";
 $labels['keep_in_nextcloud'] = "Keep in Nextcloud, but remove from list";
 

@@ -582,7 +582,7 @@ trait Hooks
         $tmpl = str_replace("%ICONBLOB%", base64_encode($mime_icon), $tmpl);
         $tmpl = str_replace("%CHECKSUM%", strtoupper($checksum) . " " . hash_file($checksum, $data["path"]), $tmpl);
 
-        $icon_rows = 4;
+        $icon_rows = 5;
         if (isset($form_params["password"])){
             $tmpl = str_replace("%PASSWORD%", $form_params["password"], $tmpl);
             $tmpl = str_replace("%BEGINPASSWORD%", "", $tmpl);
@@ -594,11 +594,8 @@ trait Hooks
 
         if (isset($form_params["expireDate"]) && isset($expire_date)){
             $tmpl = str_replace("%VALIDUNTIL%", $expire_date->format("Y-m-d"), $tmpl);
-            $tmpl = str_replace("%BEGINVALIDUNTIL%", "", $tmpl);
-            $tmpl = str_replace("%ENDVALIDUNTIL%", "", $tmpl);
-            $icon_rows++;
         } else {
-            $tmpl = preg_replace("/%BEGINVALIDUNTIL%.*?%ENDVALIDUNTIL%/", "", $tmpl);
+            $tmpl = str_replace("%VALIDUNTIL%", "deletion", $tmpl);
         }
 
         $tmpl = str_replace("%ICONSPAN%", $icon_rows, $tmpl);
