@@ -220,6 +220,8 @@ $config['ldap_public']['public'] = array(
  - [ ] Give the option for (additional) user specific Nextcloud servers
  - [ ] Wrap WebDAV request for easier adaptation to other Servers
  - [ ] Allow to define global user
+ - [ ] Translatable attachment template
+ - [ ] Translate to more languages
  - [x] Add folder to `sync-exclude.lst` to prevent desktop clients from (automatically) downloading the folder
 
 ## Credits
