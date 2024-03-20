@@ -562,8 +562,15 @@ trait Hooks
             return ["status" => false, "abort" => true];
         }
 
-        //fill out template attachment HTML
-        $tmpl = file_get_contents(dirname(__FILE__) . "/attachment_tmpl.html");
+        $tmpl = "";
+
+        if (isset($form_params["password"])) {
+            //fill out template attachment HTML with Password
+            $tmpl = file_get_contents(dirname(__FILE__) . "/attachment_tmpl_pass.html");
+        } else {
+            //fill out template attachment HTML
+            $tmpl = file_get_contents(dirname(__FILE__) . "/attachment_tmpl.html");
+        }
 
         $fs = filesize($data["path"]);
         $u = ["", "k", "M", "G", "T"];
@@ -582,14 +589,8 @@ trait Hooks
         $tmpl = str_replace("%ICONBLOB%", base64_encode($mime_icon), $tmpl);
         $tmpl = str_replace("%CHECKSUM%", strtoupper($checksum) . " " . hash_file($checksum, $data["path"]), $tmpl);
 
-        $icon_rows = 5;
         if (isset($form_params["password"])){
             $tmpl = str_replace("%PASSWORD%", $form_params["password"], $tmpl);
-            $tmpl = str_replace("%BEGINPASSWORD%", "", $tmpl);
-            $tmpl = str_replace("%ENDPASSWORD%", "", $tmpl);
-            $icon_rows++;
-        } else {
-            $tmpl = preg_replace("/%BEGINPASSWORD%.*?%ENDPASSWORD%/", "", $tmpl);
         }
 
         if (isset($form_params["expireDate"]) && isset($expire_date)){
@@ -597,8 +598,6 @@ trait Hooks
         } else {
             $tmpl = str_replace("%VALIDUNTIL%", "deletion", $tmpl);
         }
-
-        $tmpl = str_replace("%ICONSPAN%", $icon_rows, $tmpl);
 
         // Minimize HTML
         // https://stackoverflow.com/a/6225706
