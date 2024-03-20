@@ -149,3 +149,5 @@ $config["nextcloud_attachment_exclude_users_in_addr_book_group"] = [];
 // Enable/Disable certificate validation for https on WebDAV and API requests
 // Defaults to true (enabled)
 $config["nextcloud_attachment_verify_https"] = true;
+
+// vim: set syntax=php ts=4 sw=4:
