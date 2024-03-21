@@ -22,17 +22,19 @@ $labels['attach'] = "Als Kopie anfügen";
 
 $labels['upload_success_link_inserted'] = "erfolgreich zu Nextcloud hochgeladen und Link eingefügt";
 
-$labels['upload_failed_title'] = "Nextcloud hochladen fehlgeschlagen";
+$labels['upload_failed_title'] = "Hochladen zu Nextcloud fehlgeschlagen";
 $labels['upload_warning_title'] = "Nextcloud Warnung";
-$labels['upload_failed'] = "Nextcloud hochladen fehlgeschlagen:";
+$labels['upload_failed'] = "Hochladen zu Nextcloud fehlgeschlagen:";
 
 $labels['delete_ok'] = "Datei erfolgreich in Nextcloud gelöscht";
-$labels['delete_error_explain'] = "Das löschen der Datei produzierte folgenden Fehler: <b>%reason%</b>. Wenn Sie diesen Fehler ignoreren möchten, können Sie die Datei dennoch aus der Liste entfernen.";
+$labels['delete_error_explain'] = "Das löschen der Datei produzierte folgenden Fehler: <b>%reason%</b>. Wenn Sie diesen Fehler ignorieren möchten, können Sie die Datei dennoch aus der Liste entfernen.";
 $labels['remove_attachment'] = "Nextcloud Anhang löschen";
-$labels['remove_from_list'] = "Ignorieren und von Liste entfernen";
-$labels['remove_from_nextcloud_question'] = "Dies ist ein Nextcloud-Anhang. Wollen Sie diesen in Nextcloud ebenfall löschen? Sie werden die den Anhang dennoch selbst aus dem Nachrrichtentext entfernen müssen";
+$labels['remove_from_list'] = "Ignorieren und aus Liste entfernen";
+$labels['remove_from_nextcloud_question'] = "Dies ist ein Nextcloud-Anhang. Wollen Sie diesen in Nextcloud ebenfalls löschen? Sie werden die den Anhang dennoch selbst aus dem Nachrichtentext entfernen müssen";
 $labels['remove_from_nextcloud'] = "In Nextcloud entfernen";
 $labels['keep_in_nextcloud'] = "In Nextcloud behalten und aus Liste entfernen";
+
+
 
 $labels['missing_config'] = "Nextcloud Erweiterung ist nicht konfiguriert. Bitte kontaktieren Sie den Administrator!";
 $labels['cannot_mkdir'] = "Unterordner zum Hochladen konnte nicht erstellt werden:";
@@ -48,19 +50,27 @@ $labels['disconnect'] = "trennen";
 $labels['connect'] = "verbinden";
 $labels['not_connected'] = "Nicht verbunden";
 
-$labels['folder_layout'] = "Ordner Strucktur";
+$labels['folder_layout'] = "Ordner Struktur";
 $labels['folder_layout_default'] = "Server Standard: ";
 $labels['folder_layout_flat'] = "Alles in einem Ordner";
 $labels['folder_layout_hash'] = "Sortieren nach führenden Datei-hash bytes";
 $labels['folder_layout_date'] = "Sortieren nach Datum";
 $labels['folder_layout_date_Y'] = "Sortieren nach Jahr";
 $labels['folder_layout_date_Y/LLLL'] = "Sortieren nach Jahr und Monat";
-$labels['folder_layout_date_Y/LLLL/dd'] = "Sortieren nach Jahr, Monat und Woche";
+$labels['folder_layout_date_Y/LLLL/dd'] = "Sortieren nach Jahr, Monat und Woche des Monats";
 $labels['folder_layout_date_Y/LL'] = "Sortieren nach Jahr und Monat";
-$labels['folder_layout_date_Y/LL/dd'] = "Sortieren nach Jahr, Monat und Woche";
+$labels['folder_layout_date_Y/LL/dd'] = "Sortieren nach Jahr, Monat und Woche des Monats";
 $labels['folder_layout_date_Y/ww'] = "Sortieren nach Jahr und Kalenderwoche";
 $labels['folder_layout_date_Y/ww/EEEE'] = "Sortieren nach Jahr, Kalenderwoche und Wochentag";
 $labels['folder_layout_date_Y/ww/E'] = "Sortieren nach Jahr, Kalenderwoche und Wochentag";
 
+$labels['password_protected_links'] = "Erzeuge Passwort-geschützte Links";
+$labels['expire_links'] = "Setzte ein Ablaufdatum für Links";
+$labels['expire_links_after'] = "Tage nach denen der Link abläuft";
+
 $labels['password'] = "Passwort";
 $labels['valid_until'] = "Gültig bis";
+
+
+
+
