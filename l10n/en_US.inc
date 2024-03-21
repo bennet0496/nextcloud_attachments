@@ -1,7 +1,7 @@
 <?php
 
 $labels['login_failed'] = "Nextcloud login failed. Please try again later!";
-$labels['logging_in'] = "Logged-in to Nextcloud.";
+$labels['logging_in'] = "Logging-in to Nextcloud.";
 $labels['no_login_link'] = "No login link received. Please try again later.";
 $labels['logged_in'] = "Successfully logged-in to Nextcloud.";
 $labels['login'] = "Login";
