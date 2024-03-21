@@ -77,14 +77,14 @@ trait Hooks
 //            self::log($server_format_tokens);
 
             $server_format = match ($server_format_tokens[0]) {
-                "flat" => $this->gettext("folder_layout_flat"),
-                "date" => $this->gettext("folder_layout_date"). " (/" . $folder . "/" . (
+                "flat" => htmlentities($this->gettext("folder_layout_flat")),
+                "date" => htmlentities($this->gettext("folder_layout_date")). " (/" . $folder . "/" . (
                     function ($fmt) use ($date_format) {
                         $date_format->setPattern($fmt ?? "Y/LLLL");
                         return $date_format->format(time());
                     }
                     )($server_format_tokens[1] ?? "Y/LLLL")."/...)",
-                "hash" => $this->gettext("folder_layout_hash"). " (/" . $folder . "/" .(
+                "hash" => htmlentities($this->gettext("folder_layout_hash")). " (/" . $folder . "/" .(
                     function ($method, $depth) {
                         $hash = hash($method, "");
                         $hash_bytes = str_split($hash, 2);
@@ -94,8 +94,8 @@ trait Hooks
             };
 
             $layout_select->add([
-                $this->gettext("folder_layout_default").$server_format,
-                $this->gettext("folder_layout_flat")
+                htmlentities($this->gettext("folder_layout_default")).$server_format,
+                htmlentities($this->gettext("folder_layout_flat"))
             ], ["default", "flat"]);
 
             $formats = ["Y", "Y/LLLL", "Y/LLLL/dd", "Y/LL", "Y/LL/dd", "Y/ww","Y/ww/EEEE","Y/ww/E"];
@@ -103,29 +103,29 @@ trait Hooks
             foreach ($formats as $format) {
                 $date_format->setPattern($format);
                 $ex = $date_format->format(time());
-                $layout_select->add($this->gettext("folder_layout_date_".$format)." (/".$folder."/".$ex."/...)", "date:".$format);
+                $layout_select->add(htmlentities($this->gettext("folder_layout_date_".$format))." (/".$folder."/".$ex."/...)", "date:".$format);
             }
 
             $layout_select->add([
-                $this->gettext("folder_layout_hash")." (/".$folder."/ad/c8/...)",
-                $this->gettext("folder_layout_hash")." (/".$folder."/ad/c8/3b/...)",
-                $this->gettext("folder_layout_hash")." (/".$folder."/ad/c8/3b/19/...)",
-                $this->gettext("folder_layout_hash")." (/".$folder."/ad/c8/3b/19/e7/...)",
+                htmlentities($this->gettext("folder_layout_hash"))." (/".$folder."/ad/c8/...)",
+                htmlentities($this->gettext("folder_layout_hash"))." (/".$folder."/ad/c8/3b/...)",
+                htmlentities($this->gettext("folder_layout_hash"))." (/".$folder."/ad/c8/3b/19/...)",
+                htmlentities($this->gettext("folder_layout_hash"))." (/".$folder."/ad/c8/3b/19/e7/...)",
             ], ["hash:sha1:2", "hash:sha1:3", "hash:sha1:4", "hash:sha1:5"]);
 
             /** @noinspection JSUnresolvedReference */
             $blocks["plugin.nextcloud_attachments"] = [
-                "name" => $this->gettext("cloud_attachments"),
+                "name" => htmlentities($this->gettext("cloud_attachments")),
                 "options" => [
                     "server" => [
-                        "title" => $this->gettext("cloud_server"),
+                        "title" => htmlentities($this->gettext("cloud_server")),
                         "content" => "<a href='" . $server . "' target='_blank'>" . parse_url($server, PHP_URL_HOST) . "</a>"
                     ],
                     "connection" => [
-                        "title" => $this->gettext("status"),
+                        "title" => htmlentities($this->gettext("status")),
                         "content" => $login_result["status"] == "ok" ?
-                            $this->gettext("connected_as") . " " . $username . ($can_disconnect ? " (<a href=\"#\" onclick=\"rcmail.http_post('plugin.nextcloud_disconnect')\">" . $this->gettext("disconnect") . "</a>)" : "") :
-                            $this->gettext("not_connected") . " (<a href=\"#\" onclick=\"window.rcmail.nextcloud_login_button_click_handler(null, null)\">" . $this->gettext("connect") . "</a>)"
+                            htmlentities($this->gettext("connected_as")) . " " . $username . ($can_disconnect ? " (<a href=\"#\" onclick=\"rcmail.http_post('plugin.nextcloud_disconnect')\">" . htmlentities($this->gettext("disconnect")) . "</a>)" : "") :
+                            htmlentities($this->gettext("not_connected")) . " (<a href=\"#\" onclick=\"window.rcmail.nextcloud_login_button_click_handler(null, null)\">" . htmlentities($this->gettext("connect")) . "</a>)"
                     ],
 
 
@@ -134,7 +134,7 @@ trait Hooks
 
             if (!$this->rcmail->config->get(__("folder_layout_locked"), true)) {
                 $blocks["plugin.nextcloud_attachments"]["options"]["folder_layout"] = [
-                    "title" => $this->gettext("folder_layout"),
+                    "title" => htmlentities($this->gettext("folder_layout")),
                     "content" => $layout_select->show([$prefs[__("user_folder_layout")] ?? "default"])
                 ];
             }
@@ -142,7 +142,7 @@ trait Hooks
             if (!$this->rcmail->config->get(__("password_protected_links_locked"), true)) {
                 $def = $this->rcmail->config->get(__("password_protected_links"), false) ? "1" : "0";
                 $blocks["plugin.nextcloud_attachments"]["options"]["password_protected_links"] = [
-                    "title" => $this->gettext("password_protected_links"),
+                    "title" => htmlentities($this->gettext("password_protected_links")),
                     "content" => $pp_links->show($prefs[__("user_password_protected_links")] ?? $def)
                 ];
             }
@@ -150,11 +150,11 @@ trait Hooks
             if (!$this->rcmail->config->get(__("expire_links_locked"), true)) {
                 $def = $this->rcmail->config->get(__("expire_links"), false);
                 $blocks["plugin.nextcloud_attachments"]["options"]["expire_links"] = [
-                    "title" => $this->gettext("expire_links"),
+                    "title" => htmlentities($this->gettext("expire_links")),
                     "content" => $exp_links->show($prefs[__("user_expire_links")] ?? ($def === false ? "0" : "1"))
                 ];
                 $blocks["plugin.nextcloud_attachments"]["options"]["expire_links_after"] = [
-                    "title" => $this->gettext("expire_links_after"),
+                    "title" => htmlentities($this->gettext("expire_links_after")),
                     "content" => (new \html_inputfield([
                         "type" => "number",
                         "min" => "1",
