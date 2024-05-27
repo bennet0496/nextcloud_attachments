@@ -45,7 +45,7 @@ $labels['cannot_link'] = "Das hochladen der Datei war erfolgreich, es konnte abe
 $labels['cloud_attachments'] = "Cloud Anhänge";
 $labels['cloud_server'] = "Cloud Server";
 $labels['status'] = "Status";
-$labels['connected_as'] = "<b style='color: green'>Verbunden</b> als";
+$labels['connected_as'] = "Verbunden als";
 $labels['disconnect'] = "trennen";
 $labels['connect'] = "verbinden";
 $labels['not_connected'] = "Nicht verbunden";

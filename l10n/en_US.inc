@@ -45,7 +45,7 @@ $labels['cannot_link'] = "upload of file succeeded, but we couldn't create a sha
 $labels['cloud_attachments'] = "Cloud Attachments";
 $labels['cloud_server'] = "Cloud Server";
 $labels['status'] = "Status";
-$labels['connected_as'] = "<b style='color: green'>Connected</b> as";
+$labels['connected_as'] = "Connected as";
 $labels['disconnect'] = "disconnect";
 $labels['connect'] = "connect";
 $labels['not_connected'] = "Not connected";
