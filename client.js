@@ -44,7 +44,7 @@ rcmail.addEventListener("plugin.nextcloud_delete_result", function (event) {
     if (event.status === "ok") {
         rcmail.display_message(rcmail.gettext("delete_ok", "nextcloud_attachments"), "success", 2000);
     } else {
-        let dialog = rcmail.show_popup_dialog(
+        const dialog = rcmail.show_popup_dialog(
             rcmail.gettext("delete_error_explain", "nextcloud_attachments").replace("%reason%", event.message ?? "Unspecified"),
             rcmail.gettext("remove_attachment", "nextcloud_attachments"), [
                 {
@@ -77,8 +77,8 @@ rcmail.addEventListener("plugin.nextcloud_upload_result", function(event) {
         //convert to human-readable file size
         let size = event.result?.file?.size;
         const unit = ["", "k", "M", "G", "T"];
-        let i;
-        for(i = 0; size > 800 && i < unit.length; i++) {
+
+        for(let i = 0; size > 800 && i < unit.length; i++) {
             size /= 1024;
         }
 
@@ -93,7 +93,7 @@ rcmail.addEventListener("plugin.nextcloud_upload_result", function(event) {
             }
 
             if (event.result?.file?.expireDate !== undefined && event.result?.file?.expireDate !== null) {
-                let dt = new Date(event.result.file.expireDate);
+                const dt = new Date(event.result.file.expireDate);
                 attach_text += rcmail.gettext("valid_until", "nextcloud_attachments") + ": " + dt.toLocaleDateString() + "\n";
             }
 
@@ -102,7 +102,7 @@ rcmail.addEventListener("plugin.nextcloud_upload_result", function(event) {
                 sig = this.rcmail.env.signatures[sig].text;
                 sig = sig.replace(/\r\n/g, '\n');
 
-                let p = this.rcmail.env.top_posting ? message.indexOf(sig) : message.lastIndexOf(sig);
+                const p = this.rcmail.env.top_posting ? message.indexOf(sig) : message.lastIndexOf(sig);
 
                 message = message.substring(0, p) + attach_text + message.substring(p, message.length);
             } else {
@@ -120,29 +120,29 @@ rcmail.addEventListener("plugin.nextcloud_upload_result", function(event) {
 
 
             //create <a> link element
-            let link = document.createElement("a");
+            const link = document.createElement("a");
             link.href = event.result?.url;
             link.style.cssText = "text-decoration: none; color: black; display: grid; grid-template-columns: auto 1fr auto 0fr; grid-auto-rows: min-content; align-items: baseline; background: rgb(220,220,220); max-width: 400px; padding: 1em; border-radius: 10px; font-family: sans-serif";
 
-            let fn = document.createElement("span");
+            const fn = document.createElement("span");
             fn.innerText = event.result?.file?.name + "\n";
             fn.style.cssText = "grid-area: 1 / 1;font-size: medium; max-width: 280px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; width: fit-content";
             link.append(fn);
 
-            let se = document.createElement("span");
+            const se = document.createElement("span");
             se.innerText = size.toFixed(1) + " " + unit[i] + "B\n";
             se.style.cssText = "grid-area: 1 / 2;margin-left: 1em; color: rgb(100,100,100); font-size: x-small; width: fit-content";
             link.append(se);
 
-            let url = document.createElement("span");
+            const url = document.createElement("span");
             url.innerText = event.result?.url;
             url.style.cssText = "grid-area: 2 / 1 / span 1 / span 3;color: rgb(100,100,100); align-self: end; font-size: small; /*max-width: 320px; text-overflow: ellipsis; overflow: hidden;*/ white-space: nowrap; width: fit-content";
             link.append(url);
 
             let has_pass = false;
             if (event.result?.file?.password !== undefined && event.result?.file?.password !== null) {
-                let pwe = document.createElement("span");
-                let pwtt = document.createElement("code");
+                const pwe = document.createElement("span");
+                const pwtt = document.createElement("code");
                 pwtt.style.fontFamily = "monospace";
                 pwtt.style.fontSize = "13px";
                 pwtt.innerText = event.result.file.password
@@ -155,32 +155,32 @@ rcmail.addEventListener("plugin.nextcloud_upload_result", function(event) {
 
             let has_expire = false;
             if (event.result?.file?.expireDate !== undefined && event.result?.file?.expireDate !== null) {
-                let row = has_pass ? 4 : 3;
-                let dte = document.createElement("span");
-                let dt = new Date(event.result.file.expireDate);
+                const row = has_pass ? 4 : 3;
+                const dte = document.createElement("span");
+                const dt = new Date(event.result.file.expireDate);
                 dte.innerText = rcmail.gettext("valid_until", "nextcloud_attachments") + ": " + dt.toLocaleDateString();
                 dte.style.cssText = "grid-area: " + row + " / 1 / span 1 / span 3;color: rgb(100,100,100); align-self: end; font-size: small; max-width: 320px; text-overflow: ellipsis; overflow-x: hidden; width: fit-content";
                 link.append(dte);
                 has_expire = true;
             }
 
-            let imgs = document.createElement("span");
-            let rowspan = 3 + (has_pass ? 1 : 0) + (has_expire ? 1 : 0);
+            const imgs = document.createElement("span");
+            const rowspan = 3 + (has_pass ? 1 : 0) + (has_expire ? 1 : 0);
             imgs.style.cssText = "grid-area: 1 / 4 / span "+rowspan+" / span 1; align-self: center";
 
-            let img = document.createElement("img");
+            const img = document.createElement("img");
             img.setAttribute('src', "data:image/png;base64," + event.result?.file?.mimeicon);
 
             imgs.append(img);
             link.append(imgs);
 
-            let paragraph = document.createElement("p");
+            const paragraph = document.createElement("p");
             paragraph.append(link);
 
             rcmail.editor.editor.getBody().insertBefore(paragraph, sigElem);
         }
         rcmail.display_message(event.result?.file?.name + " " + rcmail.gettext("upload_success_link_inserted", "nextcloud_attachments"), "confirmation", 5000)
-        let fid = event.result?.file?.id;
+        const fid = event.result?.file?.id;
         if (fid && rcmail.env.attachments["rcmfile" + fid]) {
             rcmail.env.attachments["rcmfile" + fid].isNextcloudAttachment = true;
         }
@@ -218,13 +218,16 @@ rcmail.nextcloud_login_button_click_handler = function(btn_evt, dialog, files = 
         btn_evt.currentTarget.classList.add("button--loading");
     }
     //wait for login url and open it
+    //potentially bad for slow network connections
+    //however we cannot open popups outside the onclick handler
     setTimeout(function (t){
         if (rcmail.env.nextcloud_login_flow !== null) {
-            let hw = window.screen.availWidth / 2, hh = window.screen.availHeight / 2;
-            let x = window.screenX + hw - 300, y = window.screenY + hh - 400;
-            let pos = "screenX=" + x + ",screenY=" + y;
+            const hw = window.screen.availWidth / 2, hh = window.screen.availHeight / 2;
+            const x = window.screenX + hw - 300, y = window.screenY + hh - 400;
+            const pos = "screenX=" + x + ",screenY=" + y;
             // noinspection SpellCheckingInspection
-            if(!window.open(rcmail.env.nextcloud_login_flow, "", "noopener,noreferrer,popup,width=600,height=800,"+pos)) {
+            const popup = window.open(rcmail.env.nextcloud_login_flow, "", "noopener,noreferrer,popup,width=600,height=800,"+pos);
+            if(!popup) {
                 t?.append("<p>Click <a href=\"" + rcmail.env.nextcloud_login_flow + "\">here</a> if no window opened</p>");
             } else {
                 t?.dialog('close');
@@ -250,8 +253,8 @@ rcmail.nextcloud_login_button_click_handler = function(btn_evt, dialog, files = 
             rcmail.display_message(rcmail.gettext("logged_in", "nextcloud_attachments"), "confirmation", 10000);
             // console.log(files);
             if(files !== null) {
-                let os = rcmail.env.max_filesize;
-                let size = files.map(f => f.size).reduce((sum, val) =>  sum + val, 0);
+                const os = rcmail.env.max_filesize;
+                const size = files.map(f => f.size).reduce((sum, val) =>  sum + val, 0);
                 //if we can log in to nextcloud, we temporally increase the limit
                 //so the checks in the original function will pass
                 rcmail.env.max_filesize += 2 * size;
@@ -284,7 +287,7 @@ rcmail.addEventListener('init', function(evt) {
         // console.log(files);
         files = Array.from(files);
         //calculate file size
-        let size = files.map(f => f.size).reduce((sum, val) =>  sum + val, 0);
+        const size = files.map(f => f.size).reduce((sum, val) =>  sum + val, 0);
 
         let human_size = size;
         const unit = ["", "k", "M", "G", "T"];
@@ -300,7 +303,7 @@ rcmail.addEventListener('init', function(evt) {
         }
 
         //original max_filesize
-        let os = rcmail.env.max_filesize;
+        const os = rcmail.env.max_filesize;
 
         //intercept if files are too large
         if(size > rcmail.env.max_filesize) {
@@ -308,7 +311,7 @@ rcmail.addEventListener('init', function(evt) {
             //to login to nextcloud. Probably because, 2FA is active.
             if (rcmail.env.nextcloud_upload_available !== true && rcmail.env.nextcloud_upload_login_available === true) {
                 // noinspection SpellCheckingInspection
-                let dialog = rcmail.show_popup_dialog(
+                const dialog = rcmail.show_popup_dialog(
                     rcmail.gettext("file_too_big_not_logged_in_explain", "nextcloud_attachments")
                         .replace("%limit%", human_limit.toFixed(0) + " " + unit[unit_idx] + "B"),
                     rcmail.gettext("file_too_big", "nextcloud_attachments"), [
@@ -338,14 +341,14 @@ rcmail.addEventListener('init', function(evt) {
                 //so the checks in the original function will pass
                 rcmail.env.max_filesize += 2 * size;
                 // upload file
-                let ret = rcmail.__file_upload(files, post_args, props);
+                const ret = rcmail.__file_upload(files, post_args, props);
                 // restore limit
                 rcmail.env.max_filesize = os;
 
                 return ret;
             } else // We can upload, but we ask the user if this is what they want
             {
-                let dialog = rcmail.show_popup_dialog(
+                const dialog = rcmail.show_popup_dialog(
                     rcmail.gettext("file_too_big_explain", "nextcloud_attachments")
                         .replace("%limit%", human_limit.toFixed(0) + " " + unit[unit_idx] + "B"),
                     rcmail.gettext("file_too_big", "nextcloud_attachments"),
@@ -383,7 +386,7 @@ rcmail.addEventListener('init', function(evt) {
                 //to login to nextcloud. Probably because, 2FA is active.
                 if (rcmail.env.nextcloud_upload_available !== true && rcmail.env.nextcloud_upload_login_available === true) {
                     // noinspection SpellCheckingInspection
-                    let dialog = rcmail.show_popup_dialog(
+                    const dialog = rcmail.show_popup_dialog(
                         rcmail.gettext("file_big_not_logged_in_explain", "nextcloud_attachments")
                             .replace("%size%", human_limit.toFixed(0) + " " + unit[unit_idx] + "B"),
                         rcmail.gettext("file_big", "nextcloud_attachments"), [
@@ -407,7 +410,7 @@ rcmail.addEventListener('init', function(evt) {
                         ]);
                 } else {
                     // noinspection SpellCheckingInspection
-                    let dialog = rcmail.show_popup_dialog(
+                    const dialog = rcmail.show_popup_dialog(
                         rcmail.gettext("file_big_explain", "nextcloud_attachments")
                             .replace("%size%", human_size.toFixed(0) + " " + unit[unit_idx] + "B"),
                         rcmail.gettext("file_big", "nextcloud_attachments"), [
@@ -442,7 +445,7 @@ rcmail.addEventListener('init', function(evt) {
 
     rcmail.remove_attachment = function (name) {
         if (name && rcmail.env.attachments[name]?.isNextcloudAttachment) {
-            let dialog = rcmail.show_popup_dialog(
+            const dialog = rcmail.show_popup_dialog(
                 rcmail.gettext("remove_from_nextcloud_question", "nextcloud_attachments"),
                 rcmail.gettext("remove_attachment", "nextcloud_attachments"), [
                     {
