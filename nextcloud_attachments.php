@@ -46,6 +46,7 @@ class nextcloud_attachments extends rcube_plugin
 {
     use Utility, Hooks, Actions;
 
+    /** @noinspection PhpPrivateFieldCanBeLocalVariableInspection */
     private rcmail $rcmail;
     private GuzzleHttp\Client $client;
 
