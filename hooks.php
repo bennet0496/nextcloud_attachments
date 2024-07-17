@@ -284,7 +284,7 @@ trait Hooks
      *
      * @noinspection PhpUnusedParameterInspection
      */
-    public function poll($ignore): void
+    public function poll($param): void
     {
         //check if there is poll endpoint
         if (isset($_SESSION['plugins']['nextcloud_attachments']['endpoint']) && isset($_SESSION['plugins']['nextcloud_attachments']['token'])) {
@@ -302,6 +302,9 @@ trait Hooks
                         $prefs["nextcloud_login"] = $data;
                         $this->rcmail->user->save_prefs($prefs);
                         unset($_SESSION['plugins']['nextcloud_attachments']);
+                        if ($param["task"] == "settings") {
+                            $this->rcmail->output->command('command', 'save');
+                        }
                         $this->rcmail->output->command('plugin.nextcloud_login_result', ['status' => "ok"]);
                     }
                 } else if ($res->getStatusCode() != 404) { //login timed out
