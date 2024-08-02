@@ -1,5 +1,26 @@
+<!--
+  ~ Copyright (c) 2024 Bennet Becker <dev@bennet.cc>
+  ~
+  ~ Permission is hereby granted, free of charge, to any person obtaining a copy
+  ~ of this software and associated documentation files (the "Software"), to deal
+  ~ in the Software without restriction, including without limitation the rights
+  ~ to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+  ~ copies of the Software, and to permit persons to whom the Software is
+  ~ furnished to do so, subject to the following conditions:
+  ~
+  ~ The above copyright notice and this permission notice shall be included in all
+  ~ copies or substantial portions of the Software.
+  ~
+  ~ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  ~ IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+  ~ FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+  ~ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+  ~ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+  ~ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+  ~ SOFTWARE.
+  -->
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <title>%FILENAME% - Filelink Attachment</title>
     <meta charset="utf-8" />
@@ -9,8 +30,8 @@
     <div style=""><p>The file %FILENAME% was attached as a Filelink. It can be downloaded from the link below.</p></div>
     <div style="border: 1px solid rgb(205, 205, 205); border-radius: 5px; margin-top: 10px; margin-bottom: 10px; padding: 15px; display: grid; grid-template-columns: 0fr 1fr 0fr 0fr; align-items: center;" class="cloudAttachmentItem" data-content-location="%FILEURL%" data-service-url="">
         <a href="%FILEURL%" style="color: rgb(15, 126, 219) !important; grid-area: 1 / 2;">%FILENAME%</a>
-        <img style="grid-area: 1 / 1 / span 5; margin-right: 5px; z-index: 0" alt="Mime Icon" src="data:image/png;base64,%ICONBLOB%" width="32" height="32" />
-        <img style="grid-area: 1 / 1 / span 5; margin-right: 5px; margin-left: 22px; margin-top: 20px; z-index: 1;" alt="Paperclip Icon" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGhlaWdodD0iNDgiIHZpZXdCb3g9IjAgLTk2MCA5NjAgOTYwIiB3aWR0aD0iNDgiPjxwYXRoIGQ9Ik00NjAtODBxLTkxIDAtMTU1LjUtNjIuNVQyNDAtMjk2di00MzBxMC02NCA0NS41LTEwOVQzOTUtODgwcTY1IDAgMTEwIDQ1dDQ1IDExMHYzOTRxMCAzOC0yNiA2NC41VDQ2MC0yNDBxLTM4IDAtNjQtMjguNVQzNzAtMzM2di0zOTJoNDB2Mzk1cTAgMjIgMTQuNSAzNy41VDQ2MC0yODBxMjEgMCAzNS41LTE1dDE0LjUtMzZ2LTM5NXEwLTQ4LTMzLjUtODFUMzk1LTg0MHEtNDggMC04MS41IDMzVDI4MC03MjZ2NDMycTAgNzMgNTMgMTIzLjVUNDYwLTEyMHE3NSAwIDEyNy41LTUxVDY0MC0yOTZ2LTQzMmg0MHY0MzFxMCA5MS02NC41IDE1NFQ0NjAtODBaIi8+PC9zdmc+" width="16" height="16" /><br />
+        <img style="grid-area: 1 / 1 / span 6; margin-right: 5px; z-index: 0" alt="Mime Icon" src="data:image/png;base64,%ICONBLOB%" width="32" height="32" />
+        <img style="grid-area: 1 / 1 / span 6; margin-right: 5px; margin-left: 22px; margin-top: 20px; z-index: 1;" alt="Paperclip Icon" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGhlaWdodD0iNDgiIHZpZXdCb3g9IjAgLTk2MCA5NjAgOTYwIiB3aWR0aD0iNDgiPjxwYXRoIGQ9Ik00NjAtODBxLTkxIDAtMTU1LjUtNjIuNVQyNDAtMjk2di00MzBxMC02NCA0NS41LTEwOVQzOTUtODgwcTY1IDAgMTEwIDQ1dDQ1IDExMHYzOTRxMCAzOC0yNiA2NC41VDQ2MC0yNDBxLTM4IDAtNjQtMjguNVQzNzAtMzM2di0zOTJoNDB2Mzk1cTAgMjIgMTQuNSAzNy41VDQ2MC0yODBxMjEgMCAzNS41LTE1dDE0LjUtMzZ2LTM5NXEwLTQ4LTMzLjUtODFUMzk1LTg0MHEtNDggMC04MS41IDMzVDI4MC03MjZ2NDMycTAgNzMgNTMgMTIzLjVUNDYwLTEyMHE3NSAwIDEyNy41LTUxVDY0MC0yOTZ2LTQzMmg0MHY0MzFxMCA5MS02NC41IDE1NFQ0NjAtODBaIi8+PC9zdmc+" width="16" height="16" /><br />
         <span style="grid-column: 2 / span 3; font-size: small;">
             <span>Size: </span><span style="color: rgb(89, 89, 89);">%FILESIZE%</span><br />
         </span>
@@ -19,6 +40,9 @@
         </span>
         <span style="grid-column: 2 / span 3; font-size: small;">
             <span>Checksum: </span><span style="color: rgb(89, 89, 89);">%CHECKSUM%</span><br />
+        </span>
+        <span style="grid-column: 2 / span 3; font-size: small;">
+            <span>Password: </span><span style="color: rgb(89, 89, 89);">%PASSWORD%</span><br />
         </span>
         <span style="grid-column: 2 / span 3; font-size: small;">
             <span>Available until: </span><span style="color: rgb(89, 89, 89);">%VALIDUNTIL%, after which the download link will expire</span><br />

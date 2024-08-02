@@ -1,6 +1,6 @@
 <?php
 /*
- * Copyright (c) 2024 bbecker
+ * Copyright (c) 2024 Bennet Becker <dev@bennet.cc>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -571,10 +571,11 @@ trait Hooks
 
         if (isset($form_params["password"])) {
             //fill out template attachment HTML with Password
-            $tmpl = file_get_contents(dirname(__FILE__) . "/attachment_tmpl_pass.html");
+
+            $tmpl = file_get_contents($this->home . "/templates/attachment_pass.html");
         } else {
             //fill out template attachment HTML
-            $tmpl = file_get_contents(dirname(__FILE__) . "/attachment_tmpl.html");
+            $tmpl = file_get_contents($this->home . "/templates/attachment.html");
         }
 
         $fs = filesize($data["path"]);
