@@ -75,6 +75,11 @@ $config["nextcloud_attachment_password_protected_links"] = false;
 // false => user may change the setting
 $config["nextcloud_attachment_password_protected_links_locked"] = true;
 
+// Generated password length
+// Passwords will be alphanumerical strings with upper and lower case letters and numbers
+// Defaults to 12
+$config["nextcloud_attachment_password_length"] = 12;
+
 // Expire share links after amount of days.
 // Links will expire on the last valid day at 11:59:59pm AoE-Time
 // Setting to "false" or negative value disables link expiry
