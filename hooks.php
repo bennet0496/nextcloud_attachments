@@ -490,11 +490,12 @@ trait Hooks
 
         $pass_links = $this->rcmail->config->get(__("password_protected_links"), false);
         $pass_links_lock = $this->rcmail->config->get(__("password_protected_links_locked"), false);
+        $pass_length = $this->rcmail->config->get(__("password_length"), 12);
         $pass_links_user = $prefs[__("user_password_protected_links")] ?? false;
 
         if ($pass_links || (!$pass_links_lock && $pass_links_user)) {
             $share_password = "";
-            while(strlen($share_password) <= 12) {
+            while(strlen($share_password) < $pass_length) {
                 $char = openssl_random_pseudo_bytes(1); //ascii 0-z
                 if (preg_match("/[a-zA-Z0-9]/", $char)) {
                     $share_password .= $char;
