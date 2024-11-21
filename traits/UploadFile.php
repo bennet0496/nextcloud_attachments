@@ -21,301 +21,17 @@
  * SOFTWARE.
  */
 
+namespace NextcloudAttachments\Traits;
 
-namespace NextcloudAttachments;
 use Exception;
-use GuzzleHttp\Exception\GuzzleException;
 use GuzzleHttp\Psr7;
-use IntlDateFormatter;
-use Modifiable_Mail_mime;
-use rcube_utils;
+use GuzzleHttp\Exception\GuzzleException;
 use SimpleXMLElement;
+use function NextcloudAttachments\__;
 
-require_once dirname(__FILE__) . "/Modifiable_Mail_mime.php";
+require_once dirname(__FILE__) . "/../Modifiable_Mail_mime.php";
 
-trait Hooks
-{
-    /**
-     * Hook to add info to compose preferences
-     * @param $param array preferences list
-     * @return array preferences list
-     */
-    public function add_preferences(array $param): array
-    {
-        $prefs = $this->rcmail->user->get_prefs();
-
-//        self::log($prefs);
-
-        $server = $this->rcmail->config->get(__("server"));
-        $blocks = $param["blocks"];
-
-        $username = isset($prefs["nextcloud_login"]) ? $prefs["nextcloud_login"]["loginName"] : $this->resolve_username($this->rcmail->get_user_name());
-
-        $login_result = $this->__check_login();
-
-        $can_disconnect = isset($prefs["nextcloud_login"]);
-
-        if ($param["current"] == "compose") {
-            //get the attachment sub folder
-            $folder = $this->get_folder();
-
-            $date_format = datefmt_create(
-                $this->rcmail->get_user_language(),
-                IntlDateFormatter::FULL,
-                IntlDateFormatter::FULL,
-                null,
-                IntlDateFormatter::GREGORIAN,
-                $tokens[1] ?? "Y/LLLL"
-            );
-
-            $layout_select = new \html_select(["id" => __("folder_layout"), "value" => $prefs[__("user_folder_layout")] ?? "default", "name" => "_".__("folder_layout")]);
-            $pp_links = new \html_checkbox(["id" => __("password_protected_links"), "value" => "1", "name" => "_".__("password_protected_links")]);
-            $exp_links = new \html_checkbox(["id" => __("expire_links"), "value" => "1", "name" => "_".__("expire_links")]);
-
-            $server_format_tokens = explode(":", $this->rcmail->config->get(__("folder_layout"), "flat"));
-
-//            self::log($server_format_tokens);
-
-            $server_format = match ($server_format_tokens[0]) {
-                "flat" => htmlentities($this->gettext("folder_layout_flat")),
-                "date" => htmlentities($this->gettext("folder_layout_date")). " (/" . $folder . "/" . (
-                    function ($fmt) use ($date_format) {
-                        $date_format->setPattern($fmt ?? "Y/LLLL");
-                        return $date_format->format(time());
-                    }
-                    )($server_format_tokens[1] ?? "Y/LLLL")."/...)",
-                "hash" => htmlentities($this->gettext("folder_layout_hash")). " (/" . $folder . "/" .(
-                    function ($method, $depth) {
-                        $hash = hash($method, "");
-                        $hash_bytes = str_split($hash, 2);
-                        $hash_n_bytes = array_slice($hash_bytes, 0, $depth);
-                        return implode("/", $hash_n_bytes) . substr($hash, 2 * $depth);
-                    })($server_format_tokens[1] ?? "sha1", $server_format_tokens[2] ?? 2)."/...)"
-            };
-
-            $layout_select->add([
-                htmlentities($this->gettext("folder_layout_default")).$server_format,
-                htmlentities($this->gettext("folder_layout_flat"))
-            ], ["default", "flat"]);
-
-            $formats = ["Y", "Y/LLLL", "Y/LLLL/dd", "Y/LL", "Y/LL/dd", "Y/ww","Y/ww/EEEE","Y/ww/E"];
-
-            foreach ($formats as $format) {
-                $date_format->setPattern($format);
-                $ex = $date_format->format(time());
-                $layout_select->add(htmlentities($this->gettext("folder_layout_date_".$format))." (/".$folder."/".$ex."/...)", "date:".$format);
-            }
-
-            $layout_select->add([
-                htmlentities($this->gettext("folder_layout_hash"))." (/".$folder."/ad/c8/...)",
-                htmlentities($this->gettext("folder_layout_hash"))." (/".$folder."/ad/c8/3b/...)",
-                htmlentities($this->gettext("folder_layout_hash"))." (/".$folder."/ad/c8/3b/19/...)",
-                htmlentities($this->gettext("folder_layout_hash"))." (/".$folder."/ad/c8/3b/19/e7/...)",
-            ], ["hash:sha1:2", "hash:sha1:3", "hash:sha1:4", "hash:sha1:5"]);
-
-            /** @noinspection JSUnresolvedReference */
-            $blocks["plugin.nextcloud_attachments"] = [
-                "name" => htmlentities($this->gettext("cloud_attachments")),
-                "options" => [
-                    "server" => [
-                        "title" => htmlentities($this->gettext("cloud_server")),
-                        "content" => "<a href='" . $server . "' target='_blank'>" . parse_url($server, PHP_URL_HOST) . "</a>"
-                    ],
-                    "connection" => [
-                        "title" => htmlentities($this->gettext("status")),
-                        "content" => $login_result["status"] == "ok" ?
-                            htmlentities($this->gettext("connected_as")) . " " . $username . ($can_disconnect ? " (<a href=\"#\" onclick=\"rcmail.http_post('plugin.nextcloud_disconnect')\">" . htmlentities($this->gettext("disconnect")) . "</a>)" : "") :
-                            htmlentities($this->gettext("not_connected")) . " (<a href=\"#\" onclick=\"window.rcmail.nextcloud_login_button_click_handler(null, null)\">" . htmlentities($this->gettext("connect")) . "</a>)"
-                    ],
-
-
-                ]
-            ];
-
-            if (!$this->rcmail->config->get(__("folder_layout_locked"), true)) {
-                $blocks["plugin.nextcloud_attachments"]["options"]["folder_layout"] = [
-                    "title" => htmlentities($this->gettext("folder_layout")),
-                    "content" => $layout_select->show([$prefs[__("user_folder_layout")] ?? "default"])
-                ];
-            }
-
-            if (!$this->rcmail->config->get(__("password_protected_links_locked"), true)) {
-                $def = $this->rcmail->config->get(__("password_protected_links"), false) ? "1" : "0";
-                $blocks["plugin.nextcloud_attachments"]["options"]["password_protected_links"] = [
-                    "title" => htmlentities($this->gettext("password_protected_links")),
-                    "content" => $pp_links->show($prefs[__("user_password_protected_links")] ?? $def)
-                ];
-            }
-
-            if (!$this->rcmail->config->get(__("expire_links_locked"), true)) {
-                $def = $this->rcmail->config->get(__("expire_links"), false);
-                $blocks["plugin.nextcloud_attachments"]["options"]["expire_links"] = [
-                    "title" => htmlentities($this->gettext("expire_links")),
-                    "content" => $exp_links->show($prefs[__("user_expire_links")] ?? ($def === false ? "0" : "1"))
-                ];
-                $blocks["plugin.nextcloud_attachments"]["options"]["expire_links_after"] = [
-                    "title" => htmlentities($this->gettext("expire_links_after")),
-                    "content" => (new \html_inputfield([
-                        "type" => "number",
-                        "min" => "1",
-                        "id" => __("expire_links_after"),
-                        "name" => "_".__("expire_links_after"),
-                        "value" => $prefs[__("user_expire_links_after")] ?? ($def !== false ? $def : 7)]))->show()
-                ];
-            }
-        }
-
-        return ["blocks" => $blocks];
-    }
-
-    private function save_preferences(array $param) : array
-    {
-        if ($param["section"] != "compose") {
-            return $param;
-        }
-
-        $formats = ["default", "flat", "date:Y", "date:Y/LLLL", "date:Y/LLLL/dd", "date:Y/LL", "date:Y/LL/dd",
-            "date:Y/ww","date:Y/ww/EEEE","date:Y/ww/E", "hash:sha1:2", "hash:sha1:3", "hash:sha1:4", "hash:sha1:5"];
-        $folder_layout = $_POST["_".__("folder_layout")] ?? null;
-        if (!$this->rcmail->config->get(__("folder_layout_locked"), true) &&
-            in_array($folder_layout, $formats)) {
-            $param["prefs"][__("user_folder_layout")] = $folder_layout;
-        }
-
-        $pass_prot = $_POST["_".__("password_protected_links")] ?? null;
-        if (!$this->rcmail->config->get(__("password_protected_links_locked"), true) && $pass_prot == 1) {
-            $param["prefs"][__("user_password_protected_links")] = true;
-        }
-
-        $expire_links = $_POST["_".__("expire_links")] ?? null;
-        $expire_links_after = $_POST["_".__("expire_links_after")] ?? null;
-        if (!$this->rcmail->config->get(__("expire_links_locked"), true)) {
-            $param["prefs"][__("user_expire_links")] = ($expire_links == 1 && intval($expire_links_after) > 0);
-            if (intval($expire_links_after) > 0) {
-                $param["prefs"][__("user_expire_links_after")] = intval($expire_links_after);
-            }
-        }
-
-//        self::log($param);
-
-        return $param;
-    }
-
-    /**
-     * (message_ready hook) correct attachment parameters for nextcloud attachments where
-     * parameters couldn't be set otherwise
-     *
-     * @param array $args original message
-     * @return Modifiable_Mail_mime[] corrected message
-     */
-    public function fix_attachment(array $args): array
-    {
-        $msg = new Modifiable_Mail_mime($args["message"]);
-
-        foreach ($msg->getParts() as $key => $part) {
-            if (str_starts_with($part['c_type'], "application/nextcloud_attachment")) {
-                $url = substr(trim(explode(";", $part['c_type'])[1]), strlen("url="));
-                $part["disposition"] = "inline";
-                $part["c_type"] = "text/html";
-                $part["encoding"] = "quoted-printable"; // We don't want the base64 overhead for the few kb HTML file
-                $part["add_headers"] = [
-                    "X-Mozilla-Cloud-Part" => "cloudFile; url=" . $url
-                ];
-                $msg->setPart($key, $part);
-            }
-        }
-        return ["message" => $msg];
-    }
-
-    /**
-     * Ready hook to intercept files marked for cloud upload.
-     *
-     * We set the filesize to 0 to pass the internal filesize checking.
-     * Luckily they don't check the actual file
-     *
-     * @param $param mixed ignored
-     * @noinspection PhpUnusedParameterInspection
-     */
-    public function intercept_filesize(mixed $param): void
-    {
-        // files are marked to cloud upload
-        if (isset($_REQUEST['_target']) && $_REQUEST['_target'] == "cloud") {
-            if (isset($_FILES["_attachments"]) && count($_FILES["_attachments"]) > 0) {
-                //set file sizes to 0 so rcmail_action_mail_attachment_upload::run() will not reject the files,
-                //so we can get it from rcube_uploads::insert_uploaded_file() later
-                $_FILES["_attachments"]["size"] = array_map(function ($e) {
-                    return 0;
-                }, $_FILES["_attachments"]["size"]);
-            } else {
-                self::log($this->rcmail->get_user_name() . " - empty attachment array: " . print_r($_FILES, true));
-            }
-        }
-    }
-
-    /**
-     * Ready hook to insert our client script and style.
-     *
-     * @param $param mixed page information
-     * @noinspection PhpUnusedParameterInspection
-     */
-    public function insert_client_code(mixed $param): void
-    {
-        $section = rcube_utils::get_input_string('_section', rcube_utils::INPUT_GPC);
-
-        if ((($param["task"] == "mail" && $param["action"] == "compose") ||
-                ($param["task"] == "settings" && $param["action"] == "edit-prefs" && $section == "compose")) &&
-            !$this->is_disabled()) {
-
-            $this->load_config();
-
-
-            $this->include_script("client.js");
-            $this->include_stylesheet("client.css");
-
-            $softlimit = parse_bytes($this->rcmail->config->get(__("softlimit")));
-            $limit = parse_bytes($this->rcmail->config->get('max_message_size'));
-            $this->rcmail->output->set_env(__("softlimit"), $softlimit > $limit ? null : $softlimit);
-            $this->rcmail->output->set_env(__("behavior"), $this->rcmail->config->get(__("behavior"), "prompt"));
-        }
-    }
-
-    /**
-     * Hook to periodically check login result
-     *
-     * @noinspection PhpUnusedParameterInspection
-     */
-    public function poll($param): void
-    {
-        //check if there is poll endpoint
-        if (isset($_SESSION['plugins']['nextcloud_attachments']['endpoint']) && isset($_SESSION['plugins']['nextcloud_attachments']['token'])) {
-            //poll it
-            try {
-                $res = $this->client->post($_SESSION['plugins']['nextcloud_attachments']['endpoint'] . "?token=" . $_SESSION['plugins']['nextcloud_attachments']['token']);
-
-                //user finished login
-                if ($res->getStatusCode() == 200) {
-                    $body = $res->getBody()->getContents();
-                    $data = json_decode($body, true);
-                    if (isset($data['appPassword']) && isset($data['loginName'])) {
-                        //save app password to user preferences
-                        $prefs = $this->rcmail->user->get_prefs();
-                        $prefs["nextcloud_login"] = $data;
-                        $this->rcmail->user->save_prefs($prefs);
-                        unset($_SESSION['plugins']['nextcloud_attachments']);
-                        if ($param["task"] == "settings") {
-                            $this->rcmail->output->command('command', 'save');
-                        }
-                        $this->rcmail->output->command('plugin.nextcloud_login_result', ['status' => "ok"]);
-                    }
-                } else if ($res->getStatusCode() != 404) { //login timed out
-                    unset($_SESSION['plugins']['nextcloud_attachments']);
-                }
-            } catch (GuzzleException $e) {
-                self::log("poll failed: " . print_r($e, true));
-            }
-        }
-    }
-
+trait UploadFile {
     /**
      * Hook to upload file
      *
@@ -459,11 +175,11 @@ trait Hooks
         }
 
         //create share link
-        $id = rand();
+        $id = $this->rcmail->user->ID . rand();
         $mime_name = str_replace("/", "-", $data["mimetype"]);
         $mime_generic_name = str_replace("/", "-", explode("/", $data["mimetype"])[0]) . "-x-generic";
 
-        $icon_path = dirname(__FILE__) . "/icons/Yaru-mimetypes/";
+        $icon_path = $this->home . "/icons/Yaru-mimetypes/";
         $mime_icon = file_exists($icon_path . $mime_name . ".png") ?
             file_get_contents($icon_path . $mime_name . ".png") : (
             file_exists($icon_path . $mime_generic_name . ".png") ?
@@ -478,8 +194,8 @@ trait Hooks
         $form_params = [];
         if ($exp_links > 0 || (!$exp_links_lock && $exp_links_user)) {
             $expiry_days = $exp_links ?
-                                ($exp_links_lock ? $exp_links : ($exp_links_user ?: 7)) : // global defined
-                                ($exp_links_lock ? 7 : (($exp_links_user ?: 7))); // global undefined
+                ($exp_links_lock ? $exp_links : ($exp_links_user ?: 7)) : // global defined
+                ($exp_links_lock ? 7 : (($exp_links_user ?: 7))); // global undefined
             $expire_date = new \DateTime();
             $interval = \DateInterval::createFromDateString($expiry_days ." days");
 
@@ -653,41 +369,6 @@ trait Hooks
             "uri" => $url . "/download",
             "break" => true //no other plugin should process this attachment future
         ];
-    }
-
-    /**
-     * Hook to delete removed attachment from nextcloud
-     *
-     * @param array $param attachment info
-     * @return array|string[] status info
-     */
-    public function delete(array $param): array
-    {
-        if ($_POST["_ncremove"] === "true" &&
-            str_starts_with($param["path"], "cloud:") && $param["target"] === "cloud") {
-            $prefs = $this->rcmail->user->get_prefs();
-
-            $server = $this->rcmail->config->get(__("server"));
-            $username = isset($prefs["nextcloud_login"]) ? $prefs["nextcloud_login"]["loginName"] : $this->resolve_username($this->rcmail->get_user_name());
-            $password = isset($prefs["nextcloud_login"]) ? $prefs["nextcloud_login"]["appPassword"] : $this->rcmail->get_user_password();
-
-            $path = implode("/", array_map(function ($tok) { return rawurlencode($tok); },
-                explode("/", substr($param["path"], strlen("cloud:")))));
-            try {
-                $res = $this->client->delete($server . "/remote.php/dav/files/" . $username . "/" . $path, ["auth" => [$username, $password]]);
-                if($res->getStatusCode() >= 400) {
-                    $this->rcmail->output->command('plugin.nextcloud_delete_result', ['status' => 'error', 'message' => $res->getReasonPhrase(), 'file' => $param['id']]);
-                    return ["status" => false, "abort" => true, "error" => $res->getReasonPhrase()];
-                } else {
-                    return ["status" => "ok"];
-                }
-            } catch (GuzzleException $e) {
-                $this->rcmail->output->command('plugin.nextcloud_delete_result', ['status' => 'error', 'file' => $param['id']]);
-                self::log($username . " delete request failed: " . print_r($e, true));
-            }
-        }
-
-        return $param;
     }
 
     /**

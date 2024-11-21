@@ -19,10 +19,12 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-use GuzzleHttp\Exception\GuzzleException;
-use NextcloudAttachments\Actions;
-use NextcloudAttachments\Hooks;
-use NextcloudAttachments\Utility;
+use NextcloudAttachments\Traits\DeleteAttachment;
+use NextcloudAttachments\Traits\InterceptAttachment;
+use NextcloudAttachments\Traits\NextcloudLogin;
+use NextcloudAttachments\Traits\Preferences;
+use NextcloudAttachments\Traits\UploadFile;
+use NextcloudAttachments\Utilities;
 use function NextcloudAttachments\__;
 
 if (!class_exists("GuzzleHttp\Client")) {
@@ -31,22 +33,22 @@ if (!class_exists("GuzzleHttp\Client")) {
 
 const NC_ATTACH_PREFIX = "nextcloud_attachment";
 const NC_ATTACH_LOG_FILE = "ncattach";
-const NC_ATTACH_VERSION = "1.4";
+const NC_ATTACH_VERSION = "1.5";
 
-require_once dirname(__FILE__) . "/utility.php";
-require_once dirname(__FILE__) . "/actions.php";
-require_once dirname(__FILE__) . "/hooks.php";
-
-
+require_once dirname(__FILE__) . "/traits/Preferences.php";
+require_once dirname(__FILE__) . "/traits/InterceptAttachment.php";
+require_once dirname(__FILE__) . "/traits/UploadFile.php";
+require_once dirname(__FILE__) . "/traits/DeleteAttachment.php";
+require_once dirname(__FILE__) . "/traits/NextcloudLogin.php";
+require_once dirname(__FILE__) . "/traits/Utilities.php";
 
 
 /** @noinspection PhpUnused */
 
 class nextcloud_attachments extends rcube_plugin
 {
-    use Utility, Hooks, Actions;
+    use Preferences, InterceptAttachment, UploadFile, DeleteAttachment, NextcloudLogin, Utilities;
 
-    /** @noinspection PhpPrivateFieldCanBeLocalVariableInspection */
     private rcmail $rcmail;
     private GuzzleHttp\Client $client;
 
@@ -125,5 +127,31 @@ class nextcloud_attachments extends rcube_plugin
 
         $this->add_hook("attachment_delete", function ($param) { return $this->delete($param); });
 
+    }
+
+    /**
+     * Ready hook to insert our client script and style.
+     *
+     * @param $param mixed page information
+     */
+    public function insert_client_code(mixed $param): void
+    {
+        $section = rcube_utils::get_input_string('_section', rcube_utils::INPUT_GPC);
+
+        if ((($param["task"] == "mail" && $param["action"] == "compose") ||
+                ($param["task"] == "settings" && $param["action"] == "edit-prefs" && $section == "compose")) &&
+            !$this->is_disabled()) {
+
+            $this->load_config();
+
+
+            $this->include_script("client.js");
+            $this->include_stylesheet("client.css");
+
+            $softlimit = parse_bytes($this->rcmail->config->get(__("softlimit")));
+            $limit = parse_bytes($this->rcmail->config->get('max_message_size'));
+            $this->rcmail->output->set_env(__("softlimit"), $softlimit > $limit ? null : $softlimit);
+            $this->rcmail->output->set_env(__("behavior"), $this->rcmail->config->get(__("behavior"), "prompt"));
+        }
     }
 }

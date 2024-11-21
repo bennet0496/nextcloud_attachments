@@ -26,13 +26,14 @@ namespace NextcloudAttachments;
 use GuzzleHttp\Exception\GuzzleException;
 use IntlDateFormatter;
 use rcmail;
+use rcube;
 
 function __(string $val): string
 {
     return NC_ATTACH_PREFIX . "_" . $val;
 }
 
-trait Utility
+trait Utilities
 {
 
     private static function log(...$lines): void
@@ -149,79 +150,6 @@ trait Utility
         }
 
         return false;
-    }
-
-    private function __check_login(): array
-    {
-        //Cached Result
-        if (isset($_SESSION['plugins']['nextcloud_attachments']) &&
-            $_SESSION['plugins']['nextcloud_attachments']['login_result']) {
-            return $_SESSION['plugins']['nextcloud_attachments']['login_result'];
-        }
-
-        $prefs = $this->rcmail->user->get_prefs();
-
-        $server = $this->rcmail->config->get(__("server"));
-
-        $username = $this->resolve_username();
-
-        //missing config
-        if (empty($server) || empty($username)) {
-            return ['status' => null];
-        }
-
-        //always prompt for app password, as mail passwords are determined to not work regardless
-        if ($this->rcmail->config->get(__("dont_try_mail_password"), false)) {
-            if (!isset($prefs["nextcloud_login"]) ||
-                empty($prefs["nextcloud_login"]["loginName"]) ||
-                empty($prefs["nextcloud_login"]["appPassword"])) {
-                return ['status' => 'login_required'];
-            }
-        }
-
-        //get app password and username or use rc ones
-        $username = isset($prefs["nextcloud_login"]) ? $prefs["nextcloud_login"]["loginName"] : $this->resolve_username($this->rcmail->get_user_name());
-        $password = isset($prefs["nextcloud_login"]) ? $prefs["nextcloud_login"]["appPassword"] : $this->rcmail->get_user_password();
-
-        //test webdav login
-        try {
-            $res = $this->client->request("PROPFIND", $server . "/remote.php/dav/files/" . $username, ['auth' => [$username, $password]]);
-            /** @noinspection SpellCheckingInspection */
-            $scode = $res->getStatusCode();
-            switch ($scode) {
-                case 401:
-                case 403:
-                    unset($prefs["nextcloud_login"]);
-                    $this->rcmail->user->save_prefs($prefs);
-                    //we can't use the password
-                    $_SESSION['plugins']['nextcloud_attachments']['login_result'] = ['status' => 'login_required'];
-                    return ['status' => 'login_required'];
-                case 404:
-                    unset($prefs["nextcloud_login"]);
-                    $this->rcmail->user->save_prefs($prefs);
-                    //the username does not exist
-                    $_SESSION['plugins']['nextcloud_attachments']['login_result'] = ['status' => 'invalid_user'];
-                    return ['status' => 'invalid_user'];
-                case 200:
-                case 207:
-                    //we can log in
-                    return ['status' => 'ok'];
-                default:
-                    // Persist for client error codes. keep trying for server errors
-                    if ($scode < 500) {
-                        $_SESSION['plugins']['nextcloud_attachments']['login_result'] =
-                            ['status' => null, 'code' => $scode, 'message' => $res->getReasonPhrase()];
-                    }
-                    //Probably bad idea as a single 500 error will kill the logins of all active users
-                    //unset($prefs["nextcloud_login"]);
-                    //$this->rcmail->user->save_prefs($prefs);
-                    //something weired happened
-                    return ['status' => null, 'code' => $scode, 'message' => $res->getReasonPhrase()];
-            }
-        } catch (GuzzleException $e) {
-            self::log($this->rcmail->get_user_name() . " login check request failed: " . print_r($e, true));
-            return ['status' => null];
-        }
     }
 
     /**
