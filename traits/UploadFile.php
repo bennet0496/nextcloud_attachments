@@ -377,11 +377,10 @@ trait UploadFile {
     protected function get_folder(): mixed
     {
         $folder = $this->rcmail->config->get(__("folder"), "Mail Attachments");
-        $tr_folder = $this->rcmail->config->get(__("folder_translate_name"), false);
         if (is_array($folder)) {
-            if ($tr_folder && key_exists($this->rcmail->get_user_language(), $folder)) {
+            if (key_exists($this->rcmail->get_user_language(), $folder)) {
                 $folder = $folder[$this->rcmail->get_user_language()];
-            } else if ($tr_folder && key_exists("en_US", $folder)) {
+            } else if (key_exists("en_US", $folder)) {
                 $folder = $folder["en_US"];
             } else {
                 $folder = array_first($folder);

@@ -23,7 +23,13 @@ $config["nextcloud_attachment_dont_try_mail_password"] = false;
 // Name for the sub-folder to upload to
 // Defaults to "Mail Attachments"
 // Can't be sub-folder of sub-folder link folder/sub
+//
+// The folder name can also be translated according to the users configured locale
+// by setting the value to a locale-keyed array like
+// ["en_US" => "Mail Attachments", "de_DE" => "E-Mail Anhänge"]
+// If locale doesn't exist, en_US or first will be used
 $config["nextcloud_attachment_folder"] = "Mail Attachments";
+// $config["nextcloud_attachment_folder"] = ["en_US" => "Mail Attachments", "de_DE" => "E-Mail Anhänge"]
 
 // Folder Layout
 // "flat"            => Flat folder layout, everything in the Folder
@@ -51,14 +57,6 @@ $config["nextcloud_attachment_softlimit"] = "25M";
 // "upload" => automatically upload without asking a la google
 // Defaults to "prompt"
 $config["nextcloud_attachment_behavior"] = "prompt";
-
-// Translate the folder name according to the users configured locale
-// When activating this $config["nextcloud_attachment_folder"] has to be an array
-// of locale => name, e.g.
-// $config["nextcloud_attachment_folder"] = ["en_US" => "Mail Attachments", "de_DE" => "E-Mail Anhänge"]
-// If locale doesn't exist, en_US or first will be used
-// Defaults to false
-$config["nextcloud_attachment_folder_translate_name"] = false;
 
 // Checksum Algorithm for Attachment Page
 // Defaults to sha256
