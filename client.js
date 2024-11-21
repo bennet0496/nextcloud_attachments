@@ -76,16 +76,18 @@ rcmail.addEventListener("plugin.nextcloud_upload_result", function(event) {
 
         //convert to human-readable file size
         let size = event.result?.file?.size;
-        const unit = ["", "k", "M", "G", "T"];
+        const units = ["B", "kB", "MB", "GB", "TB"];
+        let unit = units[0];
 
-        for(let i = 0; size > 800 && i < unit.length; i++) {
+        for(let i = 0; size > 800 && i < units.length; i++) {
             size /= 1024;
+            unit = units[i];
         }
 
         //insert link to plaintext editor
         if(!this.rcmail.editor.is_html()){
             let attach_text = "\n" + event.result?.file?.name +
-                " (" + size.toFixed(1).toLocaleString() + " " + unit[i] + "B) <"
+                " (" + size.toFixed(1).toLocaleString() + " " + unit + ") <"
                 + event.result?.url + ">" + "\n";
             console.log(event.result);
             if (event.result?.file?.password !== undefined && event.result?.file?.password !== null) {
@@ -130,7 +132,7 @@ rcmail.addEventListener("plugin.nextcloud_upload_result", function(event) {
             link.append(fn);
 
             const se = document.createElement("span");
-            se.innerText = size.toFixed(1) + " " + unit[i] + "B\n";
+            se.innerText = size.toFixed(1) + " " + unit + "\n";
             se.style.cssText = "grid-area: 1 / 2;margin-left: 1em; color: rgb(100,100,100); font-size: x-small; width: fit-content";
             link.append(se);
 
