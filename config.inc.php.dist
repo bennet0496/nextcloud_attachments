@@ -9,9 +9,9 @@ $config["nextcloud_attachment_server"] = "";
 // username which usually is the email address e.g. user@example.com or IMAP User
 // Placeholders are replaced as following
 // %s => verbatim RC username as reported by rcmail->get_user_name(). Depending on config loginuser@domain or login
-// %i => username used to login to imap. usually equal to %s
+// %i => username used to log in to imap. usually equal to %s
 // %e => user email
-// %l, %u => email localpart (%u is for backward compatibility)
+// %l, %u => email local part (%u is for backward compatibility)
 // %d => email domain
 // %h => IMAP Host
 $config["nextcloud_attachment_username"] = "%u";
@@ -42,7 +42,7 @@ $config["nextcloud_attachment_folder_layout"] = "flat";
 $config["nextcloud_attachment_folder_layout_locked"] = true;
 
 // Limit to show a warning at for large attachments.
-// has to be smaller then $config['max_message_size']
+// has to be smaller than $config['max_message_size']
 // set to null to disable
 $config["nextcloud_attachment_softlimit"] = "25M";
 
@@ -70,7 +70,7 @@ $config["nextcloud_attachment_checksum"] = "sha256";
 // Defaults to false
 $config["nextcloud_attachment_password_protected_links"] = false;
 
-// Allow/Disallow user to change the password protection option for themself
+// Allow/Disallow user to change the password protection option for themselves
 // true => user can not change the setting
 // false => user may change the setting
 $config["nextcloud_attachment_password_protected_links_locked"] = true;
@@ -80,13 +80,20 @@ $config["nextcloud_attachment_password_protected_links_locked"] = true;
 // Defaults to 12
 $config["nextcloud_attachment_password_length"] = 12;
 
+// The alphabets from which to generate password
+// It is guaranteed that at least one character of each set is used,
+// as long as password_length > |password_alphabets|
+// Default: ["123456789", "ABCDEFGHJKLMNPQRSTUVWXYZ", "abcdefghijkmnopqrstuvwxyz"]
+// (Lookalikes are 0O and Il are excluded)
+$config["nextcloud_attachment_password_alphabets"] = ["123456789", "ABCDEFGHJKLMNPQRSTUVWXYZ", "abcdefghijkmnopqrstuvwxyz"];
+
 // Expire share links after amount of days.
 // Links will expire on the last valid day at 11:59:59pm AoE-Time
 // Setting to "false" or negative value disables link expiry
 // Defaults to false
 $config["nextcloud_attachment_expire_links"] = false;
 
-// Allow/Disallow user to change the link expiry option for themself
+// Allow/Disallow user to change the link expiry option for themselves
 // true => user can not change the setting
 // false => user may change the setting
 $config["nextcloud_attachment_expire_links_locked"] = true;

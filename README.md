@@ -10,8 +10,6 @@ email and Nextcloud, e.g. company Installations
 
 ![Screenshots](https://github.com/bennet0496/nextcloud_attachments/assets/4955327/c2852c4e-30ca-444c-bf24-172ecc25d75f)
 
-
-
 ## Config
 
 The plugin itself has a handful core settings. The server, the username strategy and the sub folder.
@@ -27,17 +25,33 @@ $config["nextcloud_attachment_server"] = "";
 // username which usually is the email address e.g. user@example.com or IMAP User
 // Placeholders are replaced as following
 // %s => verbatim RC username as reported by rcmail->get_user_name(). Depending on config loginuser@domain or login
-// %i => username used to login to imap. usually equal to %s (since 1.3)
+// %i => username used to log in to imap. usually equal to %s (since 1.3)
 // %e => user email (since 1.3)
-// %l, %u => email localpart (%u is for backward compatibility to <1.3) (since 1.3)
+// %l, %u => email local part (%u is for backward compatibility to <1.3) (since 1.3)
 // %d => email domain (since 1.3)
 // %h => IMAP Host (since 1.3)
 $config["nextcloud_attachment_username"] = "%u";
 
-// Name for the sub folder to upload to
+// Name for the sub-folder to upload to
 // Defaults to "Mail Attachments"
-// Can't be sub folder of sub folder like folder/sub
+// Can't be sub-folder of sub-folder link folder/sub
+//
+// The folder name can also be translated according to the users configured locale
+// by setting the value to a locale-keyed array like
+// ["en_US" => "Mail Attachments", "de_DE" => "E-Mail Anhänge"]
+// If locale doesn't exist, en_US or first will be used
 $config["nextcloud_attachment_folder"] = "Mail Attachments";
+
+// Folder Layout
+// "flat"            => Flat folder layout, everything in the Folder
+// "date:format"     => Create folder hierarchy according to format. See https://unicode-org.github.io/icu/userguide/format_parse/datetime/
+//                      Use "/" as the folder separator. Defaults to date:Y/LLLL
+//                      Dateformat is localized
+// "hash:algo:depth" => Use "algo"-hash of file, creating sub folder for every of the "depth" bytes
+//                      see https://www.php.net/manual/en/function.hash-algos.php
+//                      Defaults to hash:sha1:2
+// Defaults to flat
+$config["nextcloud_attachment_folder_layout"] = "flat";
 
 // Don't try the email password at all, because we know it won't work
 // e.g. due to mandatory 2FA
@@ -61,7 +75,7 @@ and forcing them when the hard limit `$config['max_message_size']` is reached
 
 ```php
 // Limit to show a warning at for large attachments.
-// has to be smaller then $config['max_message_size']
+// has to be smaller than $config['max_message_size']
 // set to null to disable
 $config["nextcloud_attachment_softlimit"] = "12M";
 
@@ -79,11 +93,30 @@ __When enabling the plugin make sure to place it before any other attachment plu
 ```php
 $config['plugins'] = array('nextcloud_attachments', /*...*/ 'filesystem_attachments', /*...*/ 'vcard_attachments' /*...*/);
 ```
+
+### Nextcloud password policy
+If you have a password policy governing share-passwords set up in Nextcloud, then you can control the generated password with the
+following parameters
+
+```php
+// Generated password length
+// Passwords will be alphanumerical strings with upper and lower case letters and numbers
+// Defaults to 12
+$config["nextcloud_attachment_password_length"] = 12;
+
+// The alphabets from which to generate password
+// It is guaranteed that at least one character of each set is used,
+// as long as password_length > |password_alphabets|
+// Default: ["123456789", "ABCDEFGHJKLMNPQRSTUVWXYZ", "abcdefghijkmnopqrstuvwxyz"]
+// (Lookalikes are 0O and Il are excluded)
+$config["nextcloud_attachment_password_alphabets"] = ["123456789", "ABCDEFGHJKLMNPQRSTUVWXYZ", "abcdefghijkmnopqrstuvwxyz"];
+```
+
 ### Nextcloud Brute-Force protection
-By default this plugin, tests whether it can use the mail credentials for the Nextcloud login. If lots of users can't login with
+By default, this plugin, tests whether it can use the mail credentials for the Nextcloud login. If lots of users can't log in with
 their mail credentials to Nextcloud, e.g., due to high adoption of 2FA or a high percentage of user that are denied form using
-Nextcloud (via LDAP groups or smth), this will inevatably lead to Nextcloud locking out the Roundcube server because it considers
-these logins, as login brutforce attempts.
+Nextcloud (via LDAP groups or smth), this will inevitably lead to Nextcloud locking out the Roundcube server because it considers
+these logins, as login bruteforce attempts.
 
 You can disable the behavior of trying the mail password since version 1.3
 ```php
@@ -94,14 +127,11 @@ You can disable the behavior of trying the mail password since version 1.3
 $config["nextcloud_attachment_dont_try_mail_password"] = false;
 ```
 
-However you might also want to consider, adding you Roundcube server to the Brutforce allow-list of the Nextcloud server.
+However, you might also want to consider, adding you Roundcube server to the Bruteforce allow-list of the Nextcloud server.
 To do that you have to [enable the bruteforce settings app](https://docs.nextcloud.com/server/latest/admin_manual/configuration_server/bruteforce_configuration.html#the-brute-force-settings-app)
-and then as an administrator, unter Setting and Security, add your Server's IP to the allow list.
+and then as an administrator, under Setting and Security, add your Server's IP to the allow list.
 
 <img width="500" src="https://github.com/bennet0496/nextcloud_attachments/assets/4955327/044fe17d-d400-42ca-b23f-258d8fdd119d">
-
-
-
 
 ### Excluding users
 

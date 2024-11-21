@@ -367,4 +367,20 @@ trait Utility
             self::log($e);
         }
     }
+
+    private function random_from_alphabet(int $len, string|array $alphabet): string {
+        if ($len < 1) {
+            throw new \InvalidArgumentException("$len is less than or equal to 0");
+        }
+        if (is_string($alphabet)) {
+            $alphabet = str_split($alphabet);
+        }
+        $random_bytes = random_bytes($len);
+
+        return implode(array_map(function ($byte) use ($alphabet) {
+            $asize = count($alphabet);
+            $i = intval(round(ord($byte) / ((2.0 ** 8.0) / floatval($asize)))) % $asize;
+            return $alphabet[$i];
+        }, str_split($random_bytes)));
+    }
 }

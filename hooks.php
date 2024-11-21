@@ -492,17 +492,30 @@ trait Hooks
         $pass_links_lock = $this->rcmail->config->get(__("password_protected_links_locked"), false);
         $pass_length = $this->rcmail->config->get(__("password_length"), 12);
         $pass_links_user = $prefs[__("user_password_protected_links")] ?? false;
+        // default without lookalikes: 0O Il
+        $pass_alphabets = $this->rcmail->config->get(__("password_alphabets"), ["123456789", "ABCDEFGHJKLMNPQRSTUVWXYZ", "abcdefghijkmnopqrstuvwxyz"]);
 
         if ($pass_links || (!$pass_links_lock && $pass_links_user)) {
-            $share_password = "";
-            while(strlen($share_password) < $pass_length) {
-                $char = openssl_random_pseudo_bytes(1); //ascii 0-z
-                if (preg_match("/[a-zA-Z0-9]/", $char)) {
-                    $share_password .= $char;
-                }
+            $min_pass = array_map(function ($alphabet) {
+                return substr($alphabet, random_int(0, strlen($alphabet) - 1), 1);
+            }, $pass_alphabets);
+            $miss_len = $pass_length - count($min_pass);
+            if ($miss_len > 0) {
+                $fill_pass = str_split($this->random_from_alphabet($miss_len, implode($pass_alphabets)));
+            } else {
+                self::log("WARNING: requested password len smaller then number of character set to chose from");
+                $fill_pass = [];
             }
-            $form_params["password"] = $share_password;
-//            self::log($share_password);
+
+            $share_password = array_merge($min_pass, $fill_pass);
+            if(version_compare(PHP_VERSION, "8.2", ">=")) {
+                $r = new \Random\Randomizer();
+                $share_password = $r->shuffleArray($share_password);
+            } else {
+                shuffle($share_password);
+            }
+
+            $form_params["password"] = implode($share_password);
         }
 
         try {
