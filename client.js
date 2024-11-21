@@ -77,12 +77,11 @@ rcmail.addEventListener("plugin.nextcloud_upload_result", function(event) {
         //convert to human-readable file size
         let size = event.result?.file?.size;
         const units = ["B", "kB", "MB", "GB", "TB"];
-        let unit = units[0];
-
-        for(let i = 0; size > 800 && i < units.length; i++) {
+        let i = 0
+        for(i = 0; size > 800 && i < units.length; i++) {
             size /= 1024;
-            unit = units[i];
         }
+        const unit = units[i];
 
         //insert link to plaintext editor
         if(!this.rcmail.editor.is_html()){
