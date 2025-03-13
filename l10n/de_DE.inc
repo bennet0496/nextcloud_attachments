@@ -1,6 +1,6 @@
 <?php
 
-$labels['login_failed'] = "Nextcloud Anmeldung fehlgeschlagen. Bitte versuche Sie es später erneut!";
+$labels['login_failed'] = "Nextcloud Anmeldung fehlgeschlagen. Bitte versuchen Sie es später erneut!";
 $labels['logging_in'] = "Melde bei Nextcloud an.";
 $labels['no_login_link'] = "Keinen Link empfangen. Bitte versuchen Sie es später erneut.";
 $labels['logged_in'] = "Erfolgreich bei Nextcloud angemeldet.";
