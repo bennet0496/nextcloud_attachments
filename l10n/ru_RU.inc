@@ -77,6 +77,7 @@ $labels['templ_1'] = "Файл ";
 $labels['templ_2'] = "был прикреплен как файловая ссылка. Его можно скачать по ссылке ниже";
 $labels['templ_size'] = "Размер: ";
 $labels['templ_link'] = "Ссылка: ";
+$labels['templ_password'] = "Пароль: ";
 $labels['templ_checksum'] = "Контрольная сумма: ";
 $labels['templ_availuntil_1'] = "Доступно до: ";
 $labels['templ_availuntil_2'] = ", после чего ссылка для скачивания станет недействительной";
