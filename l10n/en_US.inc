@@ -78,6 +78,7 @@ $labels['templ_2'] = "was attached as a Filelink. It can be downloaded from the 
 $labels['templ_size'] = "Size: ";
 $labels['templ_link'] = "Link: ";
 $labels['templ_checksum'] = "Checksum: ";
+$labels['templ_password'] = "Password: ";
 $labels['templ_availuntil_1'] = "Available until: ";
 $labels['templ_availuntil_2'] = ", after which the download link will expire";
 $labels['templ_p'] = "Attachments hosted on %SERVERURL% and subject to the server provider's terms of service and privacy policy.<br><b>Beyond the attachment becoming unavailable after the expiration date, the sender may delete the attachment<br>at any point; download and save the file to retain a local copy.</b><br>Be careful who's attachments you trust, especially with executables and office documents.";
