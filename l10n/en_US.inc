@@ -71,7 +71,7 @@ $labels['expire_links_after'] = "Days to expire links after";
 $labels['password'] = "Password";
 $labels['valid_until'] = "Valid until";
 
-$labels['templ_lang] ="en";
+$labels['templ_lang'] ="en";
 $labels['templ_title'] = "Filelink Attachment";
 $labels['templ_1'] = "The file";
 $labels['templ_2'] = "was attached as a Filelink. It can be downloaded from the link below";
@@ -83,8 +83,8 @@ $labels['templ_availuntil_2'] = ", after which the download link will expire";
 $labels['templ_p'] = "Attachments hosted on %SERVERURL% and subject to the server provider's terms of service and privacy policy.<br><b>Beyond the attachment becoming unavailable after the expiration date, the sender may delete the attachment<br>at any point; download and save the file to retain a local copy.</b><br>Be careful who's attachments you trust, especially with executables and office documents.";
 $labels['templ_p2'] = "Generated with ";
 $labels['templ_p3'] = " for Roundcube by ";
-$labels['templ_p4] = "Icons: ";
-$labels['templ_p5] = "and";
+$labels['templ_p4'] = "Icons: ";
+$labels['templ_p5'] = "and";
 
 
 
