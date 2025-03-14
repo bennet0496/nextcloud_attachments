@@ -252,6 +252,7 @@ $config['ldap_public']['public'] = array(
  - [ ] Allow to define global user
  - [ ] Translatable attachment template
  - [ ] Translate to more languages
+   - Contribute in [transifex](https://explore.transifex.com/icarus7/nextcloud_attachments/)
  - [x] Add folder to `sync-exclude.lst` to prevent desktop clients from (automatically) downloading the folder
 
 ## Credits
@@ -262,3 +263,4 @@ $config['ldap_public']['public'] = array(
 - HTTP library: [Guzzle HTTP](https://github.com/guzzle/guzzle) (MIT)
 - Loading Animation: [decode](https://dev.to/dcodeyt/create-a-button-with-a-loading-spinner-in-html-css-1c0h)
 - HTML minimization: [StackOverflow](https://stackoverflow.com/a/6225706)
+- Russian Translation: [@Sanmen87](https://github.com/Sanmen87)
