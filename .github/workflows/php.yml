@@ -31,7 +31,7 @@ jobs:
       run: composer install --prefer-dist --no-progress
 
     - name: Upload a Build Artifact
-      uses: actions/upload-artifact@v3.1.3
+      uses: actions/upload-artifact@v4
       with:
         # Artifact name
         name: nextcloud_attachments
