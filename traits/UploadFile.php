@@ -308,32 +308,79 @@ trait UploadFile {
             $tmpl = file_get_contents($this->home . "/templates/attachment.html");
         }
 
+        $html = new \rcmail_output_html("mail", false);
+
+        $html->add_handler("plugin.nextcloud_attachments.attachment_disclaimer", function($args) use ($server) {
+            return \html::tag("p", null,
+                $this->gettext(["name" => "attachment_disclaimer", "vars" => ["serverurl" => $server]]));
+        });
+        $html->add_handler("plugin.nextcloud_attachments.copyright", function($args) use ($server) {
+            return \html::tag("p", null,
+                $this->gettext(["name" => "copyright", "vars" => [
+                    "repolocation" => \html::tag("a", [
+                        "href" => "https://github.com/bennet0496/nextcloud_attachments",
+                        "style" => "color: rgb(200,200,200);"],
+                        "nextcloud_attachments"),
+                    "author" => \html::tag("a", [
+                        "href" => "https://github.com/bennet0496",
+                        "style" => "color: rgb(200,200,200);"],
+                        "Bennet B.")]])).
+            \html::tag("p", ["style" => "margin-top: -16px"], $this->gettext("icons").
+                ' <a style="color: rgb(200,200,200);" href="https://github.com/ubuntu/yaru">Ubuntu Yaru</a> (CC BY-SA 4.0) '.
+                'and <a style="color: rgb(200,200,200);" href="https://developers.google.com/fonts/docs/material_icons">'.
+                'Material Icons</a> (Apache License 2.0).');
+        });
+
+        $html->set_env("gettext", function($name, $vars_keys, $vars_values) {
+            $vars = array_combine($vars_keys, $vars_values);
+            self::log($name, $vars);
+            return $this->gettext(["name" => $name, "vars" => $vars]);
+        });
+
         $fs = filesize($data["path"]);
         $u = ["", "k", "M", "G", "T"];
         for ($i = 0; $fs > 800.0 && $i <= count($u); $i++) {
             $fs /= 1024;
         }
 
-
-        $tmpl = str_replace("%FILENAME%", $data["name"], $tmpl);
-        /** @noinspection SpellCheckingInspection */
-        $tmpl = str_replace("%FILEURL%", $url, $tmpl);
-        /** @noinspection SpellCheckingInspection */
-        $tmpl = str_replace("%SERVERURL%", $server, $tmpl);
-        $tmpl = str_replace("%FILESIZE%", round($fs, 1) . " " . $u[$i] . "B", $tmpl);
-        /** @noinspection SpellCheckingInspection */
-        $tmpl = str_replace("%ICONBLOB%", base64_encode($mime_icon), $tmpl);
-        $tmpl = str_replace("%CHECKSUM%", strtoupper($checksum) . " " . hash_file($checksum, $data["path"]), $tmpl);
-
-        if (isset($form_params["password"])){
-            $tmpl = str_replace("%PASSWORD%", $form_params["password"], $tmpl);
-        }
+        $html->set_env("FILENAME", $data["name"]);
+        $html->set_env("FILEURL", $url);
+        $html->set_env("SERVERURL", $server);
+        $html->set_env("FILESIZE", round($fs, 1) . " " . $u[$i] . "B");
+        $html->set_env("ICONBLOB", base64_encode($mime_icon));
+        $html->set_env("CHECKSUM", strtoupper($checksum) . " " . hash_file($checksum, $data["path"]));
+        $html->set_env("PASSWORD", $form_params["password"]);
 
         if (isset($form_params["expireDate"]) && isset($expire_date)){
-            $tmpl = str_replace("%VALIDUNTIL%", $expire_date->format("Y-m-d"), $tmpl);
+            $html->set_env("VALIDUNTIL", $expire_date->format("Y-m-d"));
         } else {
-            $tmpl = str_replace("%VALIDUNTIL%", "deletion", $tmpl);
+            $html->set_env("VALIDUNTIL", $this->gettext("deletion"));
         }
+
+        $html->set_env("REPOLOCATION", "<a style='color: rgb(200,200,200);' href='https://github.com/bennet0496/nextcloud_attachments'>nextcloud_attachments</a>");
+        $html->set_env("AUTHOR", "<a style='color: rgb(200,200,200);' href='https://github.com/bennet0496'>Bennet B.</a>");
+
+        $tmpl = $html->just_parse($tmpl);
+
+//        $tmpl = str_replace("%FILENAME%", $data["name"], $tmpl);
+//        /** @noinspection SpellCheckingInspection */
+//        $tmpl = str_replace("%FILEURL%", $url, $tmpl);
+//        /** @noinspection SpellCheckingInspection */
+//        $tmpl = str_replace("%SERVERURL%", $server, $tmpl);
+//        $tmpl = str_replace("%FILESIZE%", round($fs, 1) . " " . $u[$i] . "B", $tmpl);
+//        /** @noinspection SpellCheckingInspection */
+//        $tmpl = str_replace("%ICONBLOB%", base64_encode($mime_icon), $tmpl);
+//        $tmpl = str_replace("%CHECKSUM%", strtoupper($checksum) . " " . hash_file($checksum, $data["path"]), $tmpl);
+//
+//        if (isset($form_params["password"])){
+//            $tmpl = str_replace("%PASSWORD%", $form_params["password"], $tmpl);
+//        }
+//
+//        if (isset($form_params["expireDate"]) && isset($expire_date)){
+//            $tmpl = str_replace("%VALIDUNTIL%", $expire_date->format("Y-m-d"), $tmpl);
+//        } else {
+//            $tmpl = str_replace("%VALIDUNTIL%", "deletion", $tmpl);
+//        }
 
         // Minimize HTML
         // https://stackoverflow.com/a/6225706
