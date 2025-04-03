@@ -368,6 +368,25 @@ trait UploadFile {
 
         $tmpl = $html->just_parse($tmpl);
 
+        // apply template l10n
+        $tmpl = str_replace("%templ_lang%", $this->gettext("templ_lang"), $tmpl);
+        $tmpl = str_replace("%templ_title%", $this->gettext("templ_title"), $tmpl);
+        $tmpl = str_replace("%templ_1%", $this->gettext("templ_1"), $tmpl);
+        $tmpl = str_replace("%templ_2%", $this->gettext("templ_2"), $tmpl);
+        $tmpl = str_replace("%templ_size%", $this->gettext("templ_size"), $tmpl);
+        $tmpl = str_replace("%templ_link%", $this->gettext("templ_link"), $tmpl);
+        $tmpl = str_replace("%templ_password%", $this->gettext("templ_password"), $tmpl);
+        $tmpl = str_replace("%templ_checksum%", $this->gettext("templ_checksum"), $tmpl);
+        $tmpl = str_replace("%templ_availuntil_1%", $this->gettext("templ_availuntil_1"), $tmpl);
+        $tmpl = str_replace("%templ_availuntil_2%", $this->gettext("templ_availuntil_2"), $tmpl);
+        $tmpl = str_replace("%templ_p%", $this->gettext("templ_p"), $tmpl);
+        $tmpl = str_replace("%templ_p1%", $this->gettext("templ_p1"), $tmpl);
+        $tmpl = str_replace("%templ_p2%", $this->gettext("templ_p2"), $tmpl);
+        $tmpl = str_replace("%templ_p3%", $this->gettext("templ_p3"), $tmpl);
+        $tmpl = str_replace("%templ_p4%", $this->gettext("templ_p4"), $tmpl);
+        $tmpl = str_replace("%templ_p5%", $this->gettext("templ_p5"), $tmpl);
+
+
         // Minimize HTML
         // https://stackoverflow.com/a/6225706
         $search = array(
