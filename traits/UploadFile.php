@@ -325,8 +325,8 @@ trait UploadFile {
                         "style" => "color: rgb(200,200,200);"],
                         "Bennet B.")]])).
                 \html::tag("p", ["style" => "margin-top: -16px"], $this->gettext("icons").
-                    ' <a style="color: rgb(200,200,200);" href="https://github.com/ubuntu/yaru">Ubuntu Yaru</a> (CC BY-SA 4.0) '.
-                    'and <a style="color: rgb(200,200,200);" href="https://developers.google.com/fonts/docs/material_icons">'.
+                    ': <a style="color: rgb(200,200,200);" href="https://github.com/ubuntu/yaru">Ubuntu Yaru</a> (CC BY-SA 4.0), '.
+                     '<a style="color: rgb(200,200,200);" href="https://developers.google.com/fonts/docs/material_icons">'.
                     'Material Icons</a> (Apache License 2.0).');
         });
 

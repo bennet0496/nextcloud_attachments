@@ -73,12 +73,12 @@ $labels['valid_until'] = "Valid until";
 
 $labels['filelink_attachment'] = "Filelink Attachment";
 $labels['file_is_filelink_download_below'] = 'The file $filename was attached as a Filelink. It can be downloaded from the link below.';
-$labels['size'] = "Size:";
-$labels['link'] = "Link:";
-$labels['checksum'] = "Checksum:";
-$labels['available_until'] = "Available until:";
+$labels['size'] = "Size";
+$labels['link'] = "Link";
+$labels['checksum'] = "Checksum";
+$labels['available_until'] = "Available until";
 $labels['valid_until_expires'] = '$validuntil, after which the download link will expire';
 $labels['attachment_disclaimer'] = 'Attachments hosted on $serverurl and subject to the server provider\'s terms of service and privacy policy. <b>Beyond the attachment becoming unavailable after the expiration date, the sender may delete the attachment at any point; download and save the file to retain a local copy.</b> Be careful who\'s attachments you trust, especially with executables and office documents.';
 $labels['copyright'] = 'Generated with $repolocation for Roundcube by $author';
-$labels['icons'] = "Icons:";
+$labels['icons'] = "Icons";
 $labels['deletion'] = 'deletion';
