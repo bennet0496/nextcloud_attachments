@@ -297,24 +297,23 @@ trait UploadFile {
             return ["status" => false, "abort" => true];
         }
 
-        $tmpl = "";
-
-        if (isset($form_params["password"])) {
-            //fill out template attachment HTML with Password
-
-            $tmpl = file_get_contents($this->home . "/templates/attachment_pass.html");
-        } else {
-            //fill out template attachment HTML
-            $tmpl = file_get_contents($this->home . "/templates/attachment.html");
-        }
+        $tmpl = file_get_contents($this->home . "/templates/attachment.html");
+        // TODO this has to be message dependent not user dependent
+        $dlang = $this->rcmail->user->language;
 
         $html = new \rcmail_output_html("mail", false);
 
-        $html->add_handler("plugin.nextcloud_attachments.attachment_disclaimer", function($args) use ($server) {
+        $html->add_handler("plugin.nextcloud_attachments.attachment_preamble", function ($ignore) use ($data) {
+            return \html::tag("p", null,
+                $this->gettext(["name" => "file_is_filelink_download_below", "vars" => ["filename" => $data["name"]]]));
+        });
+
+        $html->add_handler("plugin.nextcloud_attachments.attachment_disclaimer", function($ignore) use ($server) {
             return \html::tag("p", null,
                 $this->gettext(["name" => "attachment_disclaimer", "vars" => ["serverurl" => $server]]));
         });
-        $html->add_handler("plugin.nextcloud_attachments.copyright", function($args) use ($server) {
+
+        $html->add_handler("plugin.nextcloud_attachments.copyright", function($ignore) use ($server) {
             return \html::tag("p", null,
                 $this->gettext(["name" => "copyright", "vars" => [
                     "repolocation" => \html::tag("a", [
@@ -325,10 +324,10 @@ trait UploadFile {
                         "href" => "https://github.com/bennet0496",
                         "style" => "color: rgb(200,200,200);"],
                         "Bennet B.")]])).
-            \html::tag("p", ["style" => "margin-top: -16px"], $this->gettext("icons").
-                ' <a style="color: rgb(200,200,200);" href="https://github.com/ubuntu/yaru">Ubuntu Yaru</a> (CC BY-SA 4.0) '.
-                'and <a style="color: rgb(200,200,200);" href="https://developers.google.com/fonts/docs/material_icons">'.
-                'Material Icons</a> (Apache License 2.0).');
+                \html::tag("p", ["style" => "margin-top: -16px"], $this->gettext("icons").
+                    ' <a style="color: rgb(200,200,200);" href="https://github.com/ubuntu/yaru">Ubuntu Yaru</a> (CC BY-SA 4.0) '.
+                    'and <a style="color: rgb(200,200,200);" href="https://developers.google.com/fonts/docs/material_icons">'.
+                    'Material Icons</a> (Apache License 2.0).');
         });
 
         $html->set_env("gettext", function($name, $vars_keys, $vars_values) {
@@ -351,36 +350,23 @@ trait UploadFile {
         $html->set_env("CHECKSUM", strtoupper($checksum) . " " . hash_file($checksum, $data["path"]));
         $html->set_env("PASSWORD", $form_params["password"]);
 
-        if (isset($form_params["expireDate"]) && isset($expire_date)){
-            $html->set_env("VALIDUNTIL", $expire_date->format("Y-m-d"));
-        } else {
-            $html->set_env("VALIDUNTIL", $this->gettext("deletion"));
-        }
+        $html->add_handler("plugin.nextcloud_attachments.valid_until", function($ignore) use (&$form_params, &$expire_date, $dlang) {
+            if (isset($form_params["expireDate"]) && isset($expire_date)){
+                $fmt = new \IntlDateFormatter($dlang, \IntlDateFormatter::MEDIUM, \IntlDateFormatter::NONE);
+                $fmt->format($expire_date);
+                $t = $this->gettext(["name" => "valid_until_expires", "vars" => [
+                    "validuntil" => /*$expire_date->format("Y-m-d")*/ $fmt->format($expire_date) ]]);
+                error_log($t);
+                return $t;
+            } else {
+                return $this->gettext("deletion");
+            }
+        });
 
         $html->set_env("REPOLOCATION", "<a style='color: rgb(200,200,200);' href='https://github.com/bennet0496/nextcloud_attachments'>nextcloud_attachments</a>");
         $html->set_env("AUTHOR", "<a style='color: rgb(200,200,200);' href='https://github.com/bennet0496'>Bennet B.</a>");
 
         $tmpl = $html->just_parse($tmpl);
-
-//        $tmpl = str_replace("%FILENAME%", $data["name"], $tmpl);
-//        /** @noinspection SpellCheckingInspection */
-//        $tmpl = str_replace("%FILEURL%", $url, $tmpl);
-//        /** @noinspection SpellCheckingInspection */
-//        $tmpl = str_replace("%SERVERURL%", $server, $tmpl);
-//        $tmpl = str_replace("%FILESIZE%", round($fs, 1) . " " . $u[$i] . "B", $tmpl);
-//        /** @noinspection SpellCheckingInspection */
-//        $tmpl = str_replace("%ICONBLOB%", base64_encode($mime_icon), $tmpl);
-//        $tmpl = str_replace("%CHECKSUM%", strtoupper($checksum) . " " . hash_file($checksum, $data["path"]), $tmpl);
-//
-//        if (isset($form_params["password"])){
-//            $tmpl = str_replace("%PASSWORD%", $form_params["password"], $tmpl);
-//        }
-//
-//        if (isset($form_params["expireDate"]) && isset($expire_date)){
-//            $tmpl = str_replace("%VALIDUNTIL%", $expire_date->format("Y-m-d"), $tmpl);
-//        } else {
-//            $tmpl = str_replace("%VALIDUNTIL%", "deletion", $tmpl);
-//        }
 
         // Minimize HTML
         // https://stackoverflow.com/a/6225706
