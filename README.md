@@ -53,11 +53,27 @@ $config["nextcloud_attachment_folder"] = "Mail Attachments";
 // Defaults to flat
 $config["nextcloud_attachment_folder_layout"] = "flat";
 
+// (Dis)Allow user to change the layout
+// true => layout is locked, i.e. not user-changeable
+// false => user may change the layout on their settings page
+$config["nextcloud_attachment_folder_layout_locked"] = true;
+
 // Don't try the email password at all, because we know it won't work
 // e.g. due to mandatory 2FA
 // Defaults to false, i.e. try the password
 // Since version 1.3
 $config["nextcloud_attachment_dont_try_mail_password"] = false;
+
+// Default language to use for the Attached HTML Linking to the file
+// Use a roundcube supported language code.
+// `null` will default to the user display language
+$config["nextcloud_attachment_attached_html_lang"] = null;
+
+// Whether the language to use for the Attached HTML
+// is change able or not.
+// Locking this settings will force the language regardless of
+/// user display settings
+$config["nextcloud_attachment_attached_html_lang_locked"] = false;
 ```
 However, it also depends on the general config 
 
@@ -99,6 +115,16 @@ If you have a password policy governing share-passwords set up in Nextcloud, the
 following parameters
 
 ```php
+// Generate Password protected link.
+// Passwords will be included in the message body only, not in the HTML attachment
+// Defaults to false
+$config["nextcloud_attachment_password_protected_links"] = false;
+
+// Allow/Disallow user to change the password protection option for themselves
+// true => user can not change the setting
+// false => user may change the setting
+$config["nextcloud_attachment_password_protected_links_locked"] = true;
+
 // Generated password length
 // Passwords will be alphanumerical strings with upper and lower case letters and numbers
 // Defaults to 12
@@ -250,7 +276,7 @@ $config['ldap_public']['public'] = array(
  - [ ] Give the option for (additional) user specific Nextcloud servers
  - [ ] Wrap WebDAV request for easier adaptation to other Servers
  - [ ] Allow to define global user
- - [ ] Translatable attachment template
+ - [x] Translatable attachment template
  - [ ] Translate to more languages
    - Contribute in [transifex](https://explore.transifex.com/icarus7/nextcloud_attachments/)
  - [x] Add folder to `sync-exclude.lst` to prevent desktop clients from (automatically) downloading the folder
