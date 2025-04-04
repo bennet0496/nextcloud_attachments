@@ -315,13 +315,16 @@ trait UploadFile {
             };
         }
 
+        // Save the current Session language and load the new language as a whole
         $current_language = $_SESSION['language'];
-
         $this->rcmail->load_language($dlang);
+        // these need to be added back
         $this->add_texts("l10n/");
 
+        // We are in JSON output mode here to we need to craft an HTML environment
         $html = new \rcmail_output_html("mail", false);
 
+        // Object handlers for templated labels
         $html->add_handler("plugin.nextcloud_attachments.attachment_preamble", function ($ignore) use ($data) {
             return \html::tag("p", null,
                 $this->gettext(["name" => "file_is_filelink_download_below", "vars" => ["filename" => $data["name"]]]));
@@ -349,18 +352,13 @@ trait UploadFile {
                     'Material Icons</a> (Apache License 2.0).');
         });
 
-        $html->set_env("gettext", function($name, $vars_keys, $vars_values) {
-            $vars = array_combine($vars_keys, $vars_values);
-            self::log($name, $vars);
-            return $this->gettext(["name" => $name, "vars" => $vars]);
-        });
-
         $fs = filesize($data["path"]);
         $u = ["", "k", "M", "G", "T"];
         for ($i = 0; $fs > 800.0 && $i <= count($u); $i++) {
             $fs /= 1024;
         }
 
+        // template environment variables for "simple" replacement
         $html->set_env("FILENAME", $data["name"]);
         $html->set_env("FILEURL", $url);
         $html->set_env("SERVERURL", $server);
@@ -369,12 +367,13 @@ trait UploadFile {
         $html->set_env("CHECKSUM", strtoupper($checksum) . " " . hash_file($checksum, $data["path"]));
         $html->set_env("PASSWORD", $form_params["password"]);
 
+        // another hacky object handler
         $html->add_handler("plugin.nextcloud_attachments.valid_until", function($ignore) use (&$form_params, &$expire_date, $dlang) {
             if (isset($form_params["expireDate"]) && isset($expire_date)){
                 $fmt = new \IntlDateFormatter($dlang, \IntlDateFormatter::MEDIUM, \IntlDateFormatter::NONE);
                 $fmt->format($expire_date);
                 $t = $this->gettext(["name" => "valid_until_expires", "vars" => [
-                    "validuntil" => /*$expire_date->format("Y-m-d")*/ $fmt->format($expire_date) ]]);
+                    "validuntil" => $fmt->format($expire_date) ]]);
                 return $t;
             } else {
                 return $this->gettext("deletion");
@@ -384,11 +383,12 @@ trait UploadFile {
         $html->set_env("REPOLOCATION", "<a style='color: rgb(200,200,200);' href='https://github.com/bennet0496/nextcloud_attachments'>nextcloud_attachments</a>");
         $html->set_env("AUTHOR", "<a style='color: rgb(200,200,200);' href='https://github.com/bennet0496'>Bennet B.</a>");
 
+        // parse the template
         $tmpl = $html->just_parse($tmpl);
 
+        // Restore original language, so UI lang doesn't change. Which it shouldn't?
         $this->rcmail->load_language($current_language);
         $this->add_texts("l10n/");
-//        $_SESSION['language'] = $current_language;
 
 
         // Minimize HTML
