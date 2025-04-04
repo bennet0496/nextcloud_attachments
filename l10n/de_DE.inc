@@ -79,14 +79,14 @@ $labels['valid_until'] = 'Gültig bis';
 
 $labels['filelink_attachment'] = 'Datei-Link Anhang';
 $labels['file_is_filelink_download_below'] = 'Die Datei $filename wurde als Datei-Link angehangen. Sie kann über den nachfolgenden Link heruntergeladen werden.';
-$labels['size'] = 'Größe:';
-$labels['link'] = 'Link:';
-$labels['checksum'] = 'Prüfsumme:';
-$labels['available_until'] = 'Verfügbar bis:';
+$labels['size'] = 'Größe';
+$labels['link'] = 'Link';
+$labels['checksum'] = 'Prüfsumme';
+$labels['available_until'] = 'Verfügbar bis';
 $labels['valid_until_expires'] = '$validuntil, nach welchem der Downloadlink ungültig wird';
 $labels['attachment_disclaimer'] = 'Anhänge werden von $serverurl zur Verfügung gestellt und unterliegen den Nutzungsbedingungen und Datenschutzbestimmungen des*der Anbieter*in. <b>Zusätzlich dazu, dass der Anhang nach dem Ablaufdatum nicht mehr verfügbar ist, kann der*die Absender*in den Anhang jederzeit löschen; laden Sie deshalb die Datei herunter und speichern Sie sie, um eine lokale Kopie zu behalten.</b> Seien Sie vorsichtig, wessen Anhängen sie trauen, insbesondere bei ausführbaren Dateien und Office Dokumenten.';
 $labels['copyright'] = 'Erstellt mit $repolocation für Roundcube von $author';
-$labels['icons'] = 'Icons:';
+$labels['icons'] = 'Icons';
 $labels['deletion'] = 'Löschung';
 
 

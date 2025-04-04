@@ -301,6 +301,25 @@ trait UploadFile {
         // TODO this has to be message dependent not user dependent
         $dlang = $this->rcmail->user->language;
 
+        if ($this->rcmail->config->get(__("attached_html_lang_locked"), false)) {
+            $dlang = match ($this->rcmail->config->get(__("attached_html_lang"))) {
+                null, "display" => $this->rcmail->user->language,
+                default => $this->rcmail->config->get(__("attached_html_lang"))
+            };
+        } else {
+            $dlang_user = $prefs[__("user_attached_html_lang")];
+            $dlang = match ($dlang_user) {
+                null, "default" => $this->rcmail->config->get(__("attached_html_lang"), $this->rcmail->user->language),
+                "display" => $this->rcmail->user->language,
+                default => $dlang_user
+            };
+        }
+
+        $current_language = $_SESSION['language'];
+
+        $this->rcmail->load_language($dlang);
+        $this->add_texts("l10n/");
+
         $html = new \rcmail_output_html("mail", false);
 
         $html->add_handler("plugin.nextcloud_attachments.attachment_preamble", function ($ignore) use ($data) {
@@ -356,7 +375,6 @@ trait UploadFile {
                 $fmt->format($expire_date);
                 $t = $this->gettext(["name" => "valid_until_expires", "vars" => [
                     "validuntil" => /*$expire_date->format("Y-m-d")*/ $fmt->format($expire_date) ]]);
-                error_log($t);
                 return $t;
             } else {
                 return $this->gettext("deletion");
@@ -367,6 +385,10 @@ trait UploadFile {
         $html->set_env("AUTHOR", "<a style='color: rgb(200,200,200);' href='https://github.com/bennet0496'>Bennet B.</a>");
 
         $tmpl = $html->just_parse($tmpl);
+
+        $this->rcmail->load_language($current_language);
+        $this->add_texts("l10n/");
+//        $_SESSION['language'] = $current_language;
 
 
         // Minimize HTML
