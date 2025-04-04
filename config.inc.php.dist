@@ -31,6 +31,17 @@ $config["nextcloud_attachment_dont_try_mail_password"] = false;
 $config["nextcloud_attachment_folder"] = "Mail Attachments";
 // $config["nextcloud_attachment_folder"] = ["en_US" => "Mail Attachments", "de_DE" => "E-Mail Anhänge"]
 
+// Default language to use for the Attached HTML Linking to the file
+// Use a roundcube supported language code.
+// `null` will default to the user display language
+$config["nextcloud_attachment_attached_html_lang"] = null;
+
+// Whether the language to use for the Attached HTML
+// is change able or not.
+// Locking this settings will force the language regardless of
+/// user display settings
+$config["nextcloud_attachment_attached_html_lang_locked"] = false;
+
 // Folder Layout
 // "flat"            => Flat folder layout, everything in the Folder
 // "date:format"     => Create folder hierarchy according to format. See https://unicode-org.github.io/icu/userguide/format_parse/datetime/

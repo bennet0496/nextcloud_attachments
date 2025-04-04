@@ -297,16 +297,60 @@ trait UploadFile {
             return ["status" => false, "abort" => true];
         }
 
-        $tmpl = "";
+        $tmpl = file_get_contents($this->home . "/templates/attachment.html");
+        // TODO this has to be message dependent not user dependent
+        $dlang = $this->rcmail->user->language;
 
-        if (isset($form_params["password"])) {
-            //fill out template attachment HTML with Password
-
-            $tmpl = file_get_contents($this->home . "/templates/attachment_pass.html");
+        if ($this->rcmail->config->get(__("attached_html_lang_locked"), false)) {
+            $dlang = match ($this->rcmail->config->get(__("attached_html_lang"))) {
+                null, "display" => $this->rcmail->user->language,
+                default => $this->rcmail->config->get(__("attached_html_lang"))
+            };
         } else {
-            //fill out template attachment HTML
-            $tmpl = file_get_contents($this->home . "/templates/attachment.html");
+            $dlang_user = $prefs[__("user_attached_html_lang")];
+            $dlang = match ($dlang_user) {
+                null, "default" => $this->rcmail->config->get(__("attached_html_lang"), $this->rcmail->user->language),
+                "display" => $this->rcmail->user->language,
+                default => $dlang_user
+            };
         }
+
+        // Save the current Session language and load the new language as a whole
+        $current_language = $_SESSION['language'];
+        $this->rcmail->load_language($dlang);
+        // these need to be added back
+        $this->add_texts("l10n/");
+
+        // We are in JSON output mode here to we need to craft an HTML environment
+        $html = new \rcmail_output_html("mail", false);
+
+        // Object handlers for templated labels
+        $html->add_handler("plugin.nextcloud_attachments.attachment_preamble", function ($ignore) use ($data) {
+            return \html::tag("p", null,
+                $this->gettext(["name" => "file_is_filelink_download_below", "vars" => ["filename" => $data["name"]]]));
+        });
+
+        $html->add_handler("plugin.nextcloud_attachments.attachment_disclaimer", function($ignore) use ($server) {
+            return \html::tag("p", null,
+                $this->gettext(["name" => "attachment_disclaimer", "vars" => ["serverurl" => $server]]));
+        });
+
+        $html->add_handler("plugin.nextcloud_attachments.copyright", function($ignore) use ($server) {
+            return \html::tag("p", null,
+                $this->gettext(["name" => "copyright", "vars" => [
+                    "repolocation" => \html::tag("a", [
+                        "href" => "https://github.com/bennet0496/nextcloud_attachments",
+                        "style" => "color: rgb(200,200,200);"],
+                        "nextcloud_attachments"),
+                    "author" => \html::tag("a", [
+                        "href" => "https://github.com/bennet0496",
+                        "style" => "color: rgb(200,200,200);"],
+                        "Bennet B.")]])).
+                \html::tag("p", ["style" => "margin-top: -16px"], $this->gettext("icons").
+                    ': <a style="color: rgb(200,200,200);" href="https://github.com/ubuntu/yaru">Ubuntu Yaru</a> (CC BY-SA 4.0), '.
+                     '<a style="color: rgb(200,200,200);" href="https://developers.google.com/fonts/docs/material_icons">'.
+                    'Material Icons</a> (Apache License 2.0).');
+        });
 
         $fs = filesize($data["path"]);
         $u = ["", "k", "M", "G", "T"];
@@ -314,26 +358,38 @@ trait UploadFile {
             $fs /= 1024;
         }
 
+        // template environment variables for "simple" replacement
+        $html->set_env("FILENAME", $data["name"]);
+        $html->set_env("FILEURL", $url);
+        $html->set_env("SERVERURL", $server);
+        $html->set_env("FILESIZE", round($fs, 1) . " " . $u[$i] . "B");
+        $html->set_env("ICONBLOB", base64_encode($mime_icon));
+        $html->set_env("CHECKSUM", strtoupper($checksum) . " " . hash_file($checksum, $data["path"]));
+        $html->set_env("PASSWORD", $form_params["password"]);
 
-        $tmpl = str_replace("%FILENAME%", $data["name"], $tmpl);
-        /** @noinspection SpellCheckingInspection */
-        $tmpl = str_replace("%FILEURL%", $url, $tmpl);
-        /** @noinspection SpellCheckingInspection */
-        $tmpl = str_replace("%SERVERURL%", $server, $tmpl);
-        $tmpl = str_replace("%FILESIZE%", round($fs, 1) . " " . $u[$i] . "B", $tmpl);
-        /** @noinspection SpellCheckingInspection */
-        $tmpl = str_replace("%ICONBLOB%", base64_encode($mime_icon), $tmpl);
-        $tmpl = str_replace("%CHECKSUM%", strtoupper($checksum) . " " . hash_file($checksum, $data["path"]), $tmpl);
+        // another hacky object handler
+        $html->add_handler("plugin.nextcloud_attachments.valid_until", function($ignore) use (&$form_params, &$expire_date, $dlang) {
+            if (isset($form_params["expireDate"]) && isset($expire_date)){
+                $fmt = new \IntlDateFormatter($dlang, \IntlDateFormatter::MEDIUM, \IntlDateFormatter::NONE);
+                $fmt->format($expire_date);
+                $t = $this->gettext(["name" => "valid_until_expires", "vars" => [
+                    "validuntil" => $fmt->format($expire_date) ]]);
+                return $t;
+            } else {
+                return $this->gettext("deletion");
+            }
+        });
 
-        if (isset($form_params["password"])){
-            $tmpl = str_replace("%PASSWORD%", $form_params["password"], $tmpl);
-        }
+        $html->set_env("REPOLOCATION", "<a style='color: rgb(200,200,200);' href='https://github.com/bennet0496/nextcloud_attachments'>nextcloud_attachments</a>");
+        $html->set_env("AUTHOR", "<a style='color: rgb(200,200,200);' href='https://github.com/bennet0496'>Bennet B.</a>");
 
-        if (isset($form_params["expireDate"]) && isset($expire_date)){
-            $tmpl = str_replace("%VALIDUNTIL%", $expire_date->format("Y-m-d"), $tmpl);
-        } else {
-            $tmpl = str_replace("%VALIDUNTIL%", "deletion", $tmpl);
-        }
+        // parse the template
+        $tmpl = $html->just_parse($tmpl);
+
+        // Restore original language, so UI lang doesn't change. Which it shouldn't?
+        $this->rcmail->load_language($current_language);
+        $this->add_texts("l10n/");
+
 
         // Minimize HTML
         // https://stackoverflow.com/a/6225706
@@ -378,10 +434,13 @@ trait UploadFile {
     {
         $folder = $this->rcmail->config->get(__("folder"), "Mail Attachments");
         if (is_array($folder)) {
-            if (key_exists($this->rcmail->get_user_language(), $folder)) {
-                $folder = $folder[$this->rcmail->get_user_language()];
-            } else if (key_exists("en_US", $folder)) {
-                $folder = $folder["en_US"];
+            $keys = array_map(fn ($k) => strtolower($k), array_keys($folder));
+            if (in_array(strtolower($this->rcmail->get_user_language()), $folder)) {
+                $folder = array_first(array_filter($folder,
+                    fn ($k) => strtolower($this->rcmail->get_user_language()) == strtolower($k), ARRAY_FILTER_USE_KEY));
+            } else if (in_array("en_us", $keys)) {
+                $folder = array_first(array_filter($folder,
+                    fn ($k) => "en_us" == strtolower($k), ARRAY_FILTER_USE_KEY));;
             } else {
                 $folder = array_first($folder);
             }
