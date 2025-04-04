@@ -73,7 +73,6 @@ $labels['attached_html_lang'] = "Sprache des Anhangs";
 $labels['display_language'] = "Anzeigesprache";
 $labels['attached_html_lang_explain'] = "Sprache, welche für den Text im Anhang verwendet wird, welche dem*der Empfänger*in beschreibt, wo die Datei zu finden ist. Nicht übersetzte Sprachen fallen auf Englisch (Vereinigte Staaten) zurück";
 
-
 $labels['password'] = 'Passwort';
 $labels['valid_until'] = 'Gültig bis';
 
@@ -88,7 +87,3 @@ $labels['attachment_disclaimer'] = 'Anhänge werden von $serverurl zur Verfügun
 $labels['copyright'] = 'Erstellt mit $repolocation für Roundcube von $author';
 $labels['icons'] = 'Icons';
 $labels['deletion'] = 'Löschung';
-
-
-
-
