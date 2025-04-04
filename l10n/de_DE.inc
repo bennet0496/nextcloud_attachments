@@ -50,8 +50,9 @@ $labels['disconnect'] = 'trennen';
 $labels['connect'] = 'verbinden';
 $labels['not_connected'] = 'Nicht verbunden';
 
+$labels['server_default'] = 'Server Standard: ';
+
 $labels['folder_layout'] = 'Ordner Struktur';
-$labels['folder_layout_default'] = 'Server Standard: ';
 $labels['folder_layout_flat'] = 'Alles in einem Ordner';
 $labels['folder_layout_hash'] = 'Sortieren nach führenden Datei-hash bytes';
 $labels['folder_layout_date'] = 'Sortieren nach Datum';
@@ -67,6 +68,11 @@ $labels['folder_layout_date_Y/ww/E'] = 'Sortieren nach Jahr, Kalenderwoche und W
 $labels['password_protected_links'] = 'Erzeuge Passwort-geschützte Links';
 $labels['expire_links'] = 'Setzte ein Ablaufdatum für Links';
 $labels['expire_links_after'] = 'Tage nach denen der Link abläuft';
+
+$labels['attached_html_lang'] = "Sprache des Anhangs";
+$labels['display_language'] = "Anzeigesprache";
+$labels['attached_html_lang_explain'] = "Sprache, welche für den Text im Anhang verwendet wird, welche dem*der Empfänger*in beschreibt, wo die Datei zu finden ist. Nicht übersetzte Sprachen fallen auf Englisch (Vereinigte Staaten) zurück";
+
 
 $labels['password'] = 'Passwort';
 $labels['valid_until'] = 'Gültig bis';

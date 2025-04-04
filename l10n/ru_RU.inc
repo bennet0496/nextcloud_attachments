@@ -50,8 +50,9 @@ $labels['disconnect'] = 'Отключить';
 $labels['connect'] = 'Подключено';
 $labels['not_connected'] = 'Нет подключения';
 
+$labels['server_default'] = 'Настройки сервера по умолчанию:';
+
 $labels['folder_layout'] = 'Структура папок';
-$labels['folder_layout_default'] = 'Настройки сервера по умолчанию:';
 $labels['folder_layout_flat'] = 'Всё в одной папке';
 $labels['folder_layout_hash'] = 'Организация по хэш-байтам файла';
 $labels['folder_layout_date'] = 'Организация по дате';
@@ -67,6 +68,10 @@ $labels['folder_layout_date_Y/ww/E'] = 'Организация по годам, 
 $labels['password_protected_links'] = 'Создавать защищенные паролем ссылки';
 $labels['expire_links'] = 'Устанавливать срок действия ссылок';
 $labels['expire_links_after'] = 'Дней до истечения срока действия ссылок';
+
+$labels['attached_html_lang'] = "Attachment Language";
+$labels['display_language'] = "Язык дисплея";
+$labels['attached_html_lang_explain'] = "Language used for the Attachment text describing the receiver where to find the file. Non-translated languages will fallback to English (US)";
 
 $labels['password'] = 'Пароль';
 $labels['valid_until'] = 'Действительно до';

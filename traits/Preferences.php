@@ -87,7 +87,7 @@ trait Preferences {
             };
 
             $layout_select->add([
-                htmlentities($this->gettext("folder_layout_default")).$server_format,
+                htmlentities($this->gettext("server_default")).$server_format,
                 htmlentities($this->gettext("folder_layout_flat"))
             ], ["default", "flat"]);
 
@@ -105,6 +105,30 @@ trait Preferences {
                 htmlentities($this->gettext("folder_layout_hash"))." (/".$folder."/ad/c8/3b/19/...)",
                 htmlentities($this->gettext("folder_layout_hash"))." (/".$folder."/ad/c8/3b/19/e7/...)",
             ], ["hash:sha1:2", "hash:sha1:3", "hash:sha1:4", "hash:sha1:5"]);
+
+            $language_select = new \html_select(["id" => __("attached_html_lang"), "value" => $prefs[__("user_attached_html_lang")] ?? "default", "name" => "_".__("attached_html_lang")]);
+
+            $slc = $this->rcmail->config->get(__("attached_html_lang"), null);
+            $lc = array_map(fn ($k) => strtolower($k), array_keys($this->rcmail->list_languages()));
+            if ($slc && in_array(strtolower($slc), $lc)) {
+                $l = array_filter($this->rcmail->list_languages(), fn ($k) => strtolower($k) == strtolower($slc), ARRAY_FILTER_USE_KEY);
+                $slc = array_keys($l)[0];
+            } elseif ($slc) {
+                error_log("invalid language code ".$slc);
+                $slc = null;
+            }
+            $server_language = match ($slc) {
+                null => htmlentities($this->gettext("display_language")),
+                default => htmlentities($this->rcmail->list_languages()[$slc])
+            };
+            $language_select->add([
+                htmlentities($this->gettext("server_default")).$server_language,
+                htmlentities($this->gettext("display_language")),
+            ], ["default", "display"]);
+
+            $ls = $this->rcmail->list_languages();
+            asort($ls);
+            $language_select->add(array_values($ls), array_keys($ls));
 
             /** @noinspection JSUnresolvedReference */
             $blocks["plugin.nextcloud_attachments"] = [
@@ -156,6 +180,17 @@ trait Preferences {
                         "value" => $prefs[__("user_expire_links_after")] ?? ($def !== false ? $def : 7)]))->show()
                 ];
             }
+
+            if(!$this->rcmail->config->get(__("attached_html_lang_locked"), false)) {
+                $blocks["plugin.nextcloud_attachments"]["options"]["attached_html_lang"] = [
+                    "title" => htmlentities($this->gettext("attached_html_lang")),
+                    "content" => $language_select->show([$prefs[__("user_attached_html_lang")] ?? "default"])
+                ];
+                $blocks["plugin.nextcloud_attachments"]["options"]["attached_html_lang_explain"] = [
+                    "title" => '',
+                    "content" => \html::span(["style" => "color: rgb(200,200,200)"],$this->gettext("attached_html_lang_explain"))
+                ];
+            }
         }
 
         return ["blocks" => $blocks];
@@ -187,6 +222,11 @@ trait Preferences {
             if (intval($expire_links_after) > 0) {
                 $param["prefs"][__("user_expire_links_after")] = intval($expire_links_after);
             }
+        }
+
+        $attached_html_lang = $_POST["_".__("attached_html_lang")] ?? null;
+        if (!$this->rcmail->config->get(__("attached_html_lang_locked"), false)) {
+            $param["prefs"][__("user_attached_html_lang")] = $attached_html_lang;
         }
 
         return $param;

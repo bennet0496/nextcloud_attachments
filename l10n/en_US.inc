@@ -50,8 +50,9 @@ $labels['disconnect'] = 'disconnect';
 $labels['connect'] = 'connect';
 $labels['not_connected'] = 'Not connected';
 
+$labels['server_default'] = 'Server default: ';
+
 $labels['folder_layout'] = 'Folder Layout';
-$labels['folder_layout_default'] = 'Server default: ';
 $labels['folder_layout_flat'] = 'Everything in one folder';
 $labels['folder_layout_hash'] = 'Organize by leading file-hash bytes';
 $labels['folder_layout_date'] = 'Organize by date';
@@ -67,6 +68,10 @@ $labels['folder_layout_date_Y/ww/E'] = 'Organize by year, calendar week and week
 $labels['password_protected_links'] = 'Generate password protected Links';
 $labels['expire_links'] = 'Set expiry date for links';
 $labels['expire_links_after'] = 'Days to expire links after';
+
+$labels['attached_html_lang'] = "Attachment Language";
+$labels['display_language'] = "Display language";
+$labels['attached_html_lang_explain'] = "Language used for the Attachment text describing the receiver where to find the file. Non-translated languages will fallback to English (US)";
 
 $labels['password'] = 'Password';
 $labels['valid_until'] = 'Valid until';
