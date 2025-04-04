@@ -95,6 +95,7 @@ class nextcloud_attachments extends rcube_plugin
         //insert our client script and style
         $this->add_hook("ready", function ($param) { $this->insert_client_code($param); });
 
+        //TODO actually implement the following
         $this->add_hook("render_page", function ($param) {
             if($param["template"] == "compose") {
                 $this->rcmail->output->add_footer(file_get_contents($this->home . "/templates/inline.html"));
