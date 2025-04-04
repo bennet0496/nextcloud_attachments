@@ -412,10 +412,13 @@ trait UploadFile {
     {
         $folder = $this->rcmail->config->get(__("folder"), "Mail Attachments");
         if (is_array($folder)) {
-            if (key_exists($this->rcmail->get_user_language(), $folder)) {
-                $folder = $folder[$this->rcmail->get_user_language()];
-            } else if (key_exists("en_US", $folder)) {
-                $folder = $folder["en_US"];
+            $keys = array_map(fn ($k) => strtolower($k), array_keys($folder));
+            if (in_array(strtolower($this->rcmail->get_user_language()), $folder)) {
+                $folder = array_first(array_filter($folder,
+                    fn ($k) => strtolower($this->rcmail->get_user_language()) == strtolower($k), ARRAY_FILTER_USE_KEY));
+            } else if (in_array("en_us", $keys)) {
+                $folder = array_first(array_filter($folder,
+                    fn ($k) => "en_us" == strtolower($k), ARRAY_FILTER_USE_KEY));;
             } else {
                 $folder = array_first($folder);
             }
