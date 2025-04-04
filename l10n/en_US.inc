@@ -71,7 +71,7 @@ $labels['expire_links_after'] = 'Days to expire links after';
 
 $labels['attached_html_lang'] = "Attachment Language";
 $labels['display_language'] = "Display language";
-$labels['attached_html_lang_explain'] = "Language used for the Attachment text describing the receiver where to find the file. Non-translated languages will fallback to English (US)";
+$labels['attached_html_lang_explain'] = "Language used for the Attachment text describing the receiver where to find the file. Non-translated languages will fall back to English (US)";
 
 $labels['password'] = 'Password';
 $labels['valid_until'] = 'Valid until';

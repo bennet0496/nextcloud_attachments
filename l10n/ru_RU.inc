@@ -69,9 +69,9 @@ $labels['password_protected_links'] = 'Создавать защищенные �
 $labels['expire_links'] = 'Устанавливать срок действия ссылок';
 $labels['expire_links_after'] = 'Дней до истечения срока действия ссылок';
 
-$labels['attached_html_lang'] = "Attachment Language";
+$labels['attached_html_lang'] = "Язык вложений";
 $labels['display_language'] = "Язык дисплея";
-$labels['attached_html_lang_explain'] = "Language used for the Attachment text describing the receiver where to find the file. Non-translated languages will fallback to English (US)";
+$labels['attached_html_lang_explain'] = "Язык, используемый для текста вложения, описывающего получателю, где найти файл. Непереведенные языки будут возвращаться к английскому (США).";
 
 $labels['password'] = 'Пароль';
 $labels['valid_until'] = 'Действительно до';
