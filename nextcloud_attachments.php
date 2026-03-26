@@ -104,7 +104,7 @@ class nextcloud_attachments extends rcube_plugin
 
         //correct the cloud attachment size for retrieval
         $this->add_hook('attachment_get', function ($param) {
-            if ($param["target"] === "cloud") {
+            if (isset($param["target"]) && $param["target"] === "cloud") {
                 $param["mimetype"] = "application/nextcloud_attachment; url=" . $param["uri"]; //Mark attachment for later interception
                 $param["status"] = true;
                 $param["size"] = strlen($param["data"]);
