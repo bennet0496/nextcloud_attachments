@@ -21,7 +21,7 @@
  * SOFTWARE.
  */
 
-namespace NextcloudAttachments\Traits;
+namespace NextcloudAttachments;
 
 use Modifiable_Mail_mime;
 
@@ -64,8 +64,8 @@ trait InterceptAttachment {
     public function intercept_filesize(mixed $param): void
     {
         // files are marked to cloud upload
-        if (isset($_REQUEST['_target']) && $_REQUEST['_target'] == "cloud") {
-            if (isset($_FILES["_attachments"]) && count($_FILES["_attachments"]) > 0) {
+        if (@$_REQUEST['_target'] == "cloud") {
+            if (count($_FILES["_attachments"] ?? []) > 0) {
                 //set file sizes to 0 so rcmail_action_mail_attachment_upload::run() will not reject the files,
                 //so we can get it from rcube_uploads::insert_uploaded_file() later
                 $_FILES["_attachments"]["size"] = array_map(function ($e) {

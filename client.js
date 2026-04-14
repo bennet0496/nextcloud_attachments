@@ -50,7 +50,7 @@ rcmail.addEventListener("plugin.nextcloud_delete_result", function (event) {
                 {
                     text: rcmail.gettext("remove_from_list", "nextcloud_attachments"),
                     'class': '',
-                    click: (e) => {
+                    click: () => {
                         rcmail.remove_from_attachment_list("rcmfile" + event.file);
                         dialog.dialog('close');
                     }
@@ -77,7 +77,7 @@ rcmail.addEventListener("plugin.nextcloud_upload_result", function(event) {
         //convert to human-readable file size
         let size = event.result?.file?.size;
         const units = ["B", "kB", "MB", "GB", "TB"];
-        let i = 0
+        let i;
         for(i = 0; size > 800 && i < units.length; i++) {
             size /= 1024;
         }
@@ -452,7 +452,7 @@ rcmail.addEventListener('init', function(evt) {
                     {
                         text: rcmail.gettext("remove_from_nextcloud", "nextcloud_attachments"),
                         'class': 'mainaction delete',
-                        click: (e) => {
+                        click: () => {
                             this.http_post('remove-attachment', { _id:rcmail.env.compose_id, _file:name, _ncremove: true });
                             dialog.dialog('close');
                         }

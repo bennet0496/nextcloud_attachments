@@ -19,11 +19,11 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-use NextcloudAttachments\Traits\DeleteAttachment;
-use NextcloudAttachments\Traits\InterceptAttachment;
-use NextcloudAttachments\Traits\NextcloudLogin;
-use NextcloudAttachments\Traits\Preferences;
-use NextcloudAttachments\Traits\UploadFile;
+use NextcloudAttachments\DeleteAttachment;
+use NextcloudAttachments\InterceptAttachment;
+use NextcloudAttachments\NextcloudLogin;
+use NextcloudAttachments\Preferences;
+use NextcloudAttachments\UploadFile;
 use NextcloudAttachments\Utilities;
 use function NextcloudAttachments\__;
 
@@ -80,7 +80,6 @@ class nextcloud_attachments extends rcube_plugin
         $this->add_texts("l10n/", true);
 
         //action to check if we have a usable login
-        /** @noinspection SpellCheckingInspection */
         $this->register_action('plugin.nextcloud_checklogin', function () { $this->check_login(); });
 
         //action to trigger login flow
@@ -97,14 +96,15 @@ class nextcloud_attachments extends rcube_plugin
 
         //TODO actually implement the following
         $this->add_hook("render_page", function ($param) {
-            if($param["template"] == "compose") {
+            if(@$param["template"] == "compose") {
+                /** @noinspection PhpPossiblePolymorphicInvocationInspection */
                 $this->rcmail->output->add_footer(file_get_contents($this->home . "/templates/inline.html"));
             }
         });
 
         //correct the cloud attachment size for retrieval
         $this->add_hook('attachment_get', function ($param) {
-            if (isset($param["target"]) && $param["target"] === "cloud") {
+            if (@$param["target"] === "cloud") {
                 $param["mimetype"] = "application/nextcloud_attachment; url=" . $param["uri"]; //Mark attachment for later interception
                 $param["status"] = true;
                 $param["size"] = strlen($param["data"]);
@@ -139,8 +139,8 @@ class nextcloud_attachments extends rcube_plugin
     {
         $section = rcube_utils::get_input_string('_section', rcube_utils::INPUT_GPC);
 
-        if ((($param["task"] == "mail" && $param["action"] == "compose") ||
-                ($param["task"] == "settings" && $param["action"] == "edit-prefs" && $section == "compose")) &&
+        if (((@$param["task"] == "mail" && @$param["action"] == "compose") ||
+                (@$param["task"] == "settings" && @$param["action"] == "edit-prefs" && $section == "compose")) &&
             !$this->is_disabled()) {
 
             $this->load_config();

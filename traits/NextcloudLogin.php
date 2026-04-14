@@ -22,10 +22,9 @@
  */
 
 
-namespace NextcloudAttachments\Traits;
+namespace NextcloudAttachments;
 
 use GuzzleHttp\Exception\GuzzleException;
-use function NextcloudAttachments\__;
 
 trait NextcloudLogin {
     /**

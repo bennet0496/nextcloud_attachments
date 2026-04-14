@@ -22,10 +22,9 @@
  */
 
 
-namespace NextcloudAttachments\Traits;
+namespace NextcloudAttachments;
 
 use GuzzleHttp\Exception\GuzzleException;
-use function NextcloudAttachments\__;
 
 trait DeleteAttachment {
     /**
@@ -36,8 +35,8 @@ trait DeleteAttachment {
      */
     public function delete(array $param): array
     {
-        if ($_POST["_ncremove"] === "true" &&
-            str_starts_with($param["path"], "cloud:") && $param["target"] === "cloud") {
+        if (@$_POST["_ncremove"] === "true" &&
+            @str_starts_with(@$param["path"], "cloud:") && @$param["target"] === "cloud") {
             $prefs = $this->rcmail->user->get_prefs();
 
             $server = $this->rcmail->config->get(__("server"));

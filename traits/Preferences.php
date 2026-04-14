@@ -22,10 +22,13 @@
  */
 
 
-namespace NextcloudAttachments\Traits;
+namespace NextcloudAttachments;
 
+use html;
+use html_checkbox;
+use html_inputfield;
+use html_select;
 use IntlDateFormatter;
-use function NextcloudAttachments\__;
 
 trait Preferences {
     /**
@@ -61,9 +64,9 @@ trait Preferences {
                 $tokens[1] ?? "Y/LLLL"
             );
 
-            $layout_select = new \html_select(["id" => __("folder_layout"), "value" => $prefs[__("user_folder_layout")] ?? "default", "name" => "_".__("folder_layout")]);
-            $pp_links = new \html_checkbox(["id" => __("password_protected_links"), "value" => "1", "name" => "_".__("password_protected_links")]);
-            $exp_links = new \html_checkbox(["id" => __("expire_links"), "value" => "1", "name" => "_".__("expire_links")]);
+            $layout_select = new html_select(["id" => __("folder_layout"), "value" => $prefs[__("user_folder_layout")] ?? "default", "name" => "_".__("folder_layout")]);
+            $pp_links = new html_checkbox(["id" => __("password_protected_links"), "value" => "1", "name" => "_".__("password_protected_links")]);
+            $exp_links = new html_checkbox(["id" => __("expire_links"), "value" => "1", "name" => "_".__("expire_links")]);
 
             $server_format_tokens = explode(":", $this->rcmail->config->get(__("folder_layout"), "flat"));
 
@@ -106,9 +109,9 @@ trait Preferences {
                 htmlentities($this->gettext("folder_layout_hash"))." (/".$folder."/ad/c8/3b/19/e7/...)",
             ], ["hash:sha1:2", "hash:sha1:3", "hash:sha1:4", "hash:sha1:5"]);
 
-            $language_select = new \html_select(["id" => __("attached_html_lang"), "value" => $prefs[__("user_attached_html_lang")] ?? "default", "name" => "_".__("attached_html_lang")]);
+            $language_select = new html_select(["id" => __("attached_html_lang"), "value" => $prefs[__("user_attached_html_lang")] ?? "default", "name" => "_".__("attached_html_lang")]);
 
-            $slc = $this->rcmail->config->get(__("attached_html_lang"), null);
+            $slc = $this->rcmail->config->get(__("attached_html_lang"));
             $lc = array_map(fn ($k) => strtolower($k), array_keys($this->rcmail->list_languages()));
             if ($slc && in_array(strtolower($slc), $lc)) {
                 $l = array_filter($this->rcmail->list_languages(), fn ($k) => strtolower($k) == strtolower($slc), ARRAY_FILTER_USE_KEY);
@@ -172,7 +175,7 @@ trait Preferences {
                 ];
                 $blocks["plugin.nextcloud_attachments"]["options"]["expire_links_after"] = [
                     "title" => htmlentities($this->gettext("expire_links_after")),
-                    "content" => (new \html_inputfield([
+                    "content" => (new html_inputfield([
                         "type" => "number",
                         "min" => "1",
                         "id" => __("expire_links_after"),
@@ -188,7 +191,7 @@ trait Preferences {
                 ];
                 $blocks["plugin.nextcloud_attachments"]["options"]["attached_html_lang_explain"] = [
                     "title" => '',
-                    "content" => \html::span(["style" => "color: rgb(200,200,200)"],$this->gettext("attached_html_lang_explain"))
+                    "content" => html::span(["style" => "color: rgb(200,200,200)"],$this->gettext("attached_html_lang_explain"))
                 ];
             }
         }

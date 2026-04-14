@@ -21,13 +21,17 @@
  * SOFTWARE.
  */
 
-namespace NextcloudAttachments\Traits;
+namespace NextcloudAttachments;
 
+use DateInterval;
+use DateTime;
 use Exception;
 use GuzzleHttp\Psr7;
 use GuzzleHttp\Exception\GuzzleException;
+use html;
+use IntlDateFormatter;
+use rcmail_output_html;
 use SimpleXMLElement;
-use function NextcloudAttachments\__;
 
 require_once dirname(__FILE__) . "/../Modifiable_Mail_mime.php";
 
@@ -39,10 +43,12 @@ trait UploadFile {
      *
      * @param $data array attachment info
      * @return array attachment info
+     * @throws GuzzleException
+     * @throws Exception
      */
     public function upload(array $data): array
     {
-        if (!isset($_REQUEST['_target']) || $_REQUEST['_target'] !== "cloud") {
+        if (@$_REQUEST['_target'] !== "cloud") {
             //file not marked to cloud. we won't touch it.
             return $data;
         }
@@ -189,15 +195,15 @@ trait UploadFile {
 
         $exp_links = $this->rcmail->config->get(__("expire_links"), false);
         $exp_links_lock = $this->rcmail->config->get(__("expire_links_locked"), false);
-        $exp_links_user = $prefs[__("user_expire_links")] ? $prefs[__("user_expire_links_after")] : false;
+        $exp_links_user = @$prefs[__("user_expire_links")] ? $prefs[__("user_expire_links_after")] : false;
 
         $form_params = [];
         if ($exp_links > 0 || (!$exp_links_lock && $exp_links_user)) {
             $expiry_days = $exp_links ?
                 ($exp_links_lock ? $exp_links : ($exp_links_user ?: 7)) : // global defined
                 ($exp_links_lock ? 7 : (($exp_links_user ?: 7))); // global undefined
-            $expire_date = new \DateTime();
-            $interval = \DateInterval::createFromDateString($expiry_days ." days");
+            $expire_date = new DateTime();
+            $interval = DateInterval::createFromDateString($expiry_days ." days");
 
             $expire_date->add($interval);
 
@@ -225,6 +231,7 @@ trait UploadFile {
 
             $share_password = array_merge($min_pass, $fill_pass);
             if(version_compare(PHP_VERSION, "8.2", ">=")) {
+                /** @noinspection PhpFullyQualifiedNameUsageInspection */
                 $r = new \Random\Randomizer();
                 $share_password = $r->shuffleArray($share_password);
             } else {
@@ -297,8 +304,10 @@ trait UploadFile {
             return ["status" => false, "abort" => true];
         }
 
+//        $this->rcmail->get_address_book()
         $tmpl = file_get_contents($this->home . "/templates/attachment.html");
         // TODO this has to be message dependent not user dependent
+        /** @noinspection PhpUnusedLocalVariableInspection */
         $dlang = $this->rcmail->user->language;
 
         if ($this->rcmail->config->get(__("attached_html_lang_locked"), false)) {
@@ -322,31 +331,31 @@ trait UploadFile {
         $this->add_texts("l10n/");
 
         // We are in JSON output mode here to we need to craft an HTML environment
-        $html = new \rcmail_output_html("mail", false);
+        $html = new rcmail_output_html("mail", false);
 
         // Object handlers for templated labels
-        $html->add_handler("plugin.nextcloud_attachments.attachment_preamble", function ($ignore) use ($data) {
-            return \html::tag("p", null,
+        $html->add_handler("plugin.nextcloud_attachments.attachment_preamble", function (/* @noinspection PhpUnusedParameterInspection */$ignore) use ($data) {
+            return html::tag("p", null,
                 $this->gettext(["name" => "file_is_filelink_download_below", "vars" => ["filename" => $data["name"]]]));
         });
 
-        $html->add_handler("plugin.nextcloud_attachments.attachment_disclaimer", function($ignore) use ($server) {
-            return \html::tag("p", null,
+        $html->add_handler("plugin.nextcloud_attachments.attachment_disclaimer", function(/* @noinspection PhpUnusedParameterInspection */$ignore) use ($server) {
+            return html::tag("p", null,
                 $this->gettext(["name" => "attachment_disclaimer", "vars" => ["serverurl" => $server]]));
         });
 
-        $html->add_handler("plugin.nextcloud_attachments.copyright", function($ignore) use ($server) {
-            return \html::tag("p", null,
+        $html->add_handler("plugin.nextcloud_attachments.copyright", function(/* @noinspection PhpUnusedParameterInspection */$ignore) use ($server) {
+            return html::tag("p", null,
                 $this->gettext(["name" => "copyright", "vars" => [
-                    "repolocation" => \html::tag("a", [
+                    "repolocation" => html::tag("a", [
                         "href" => "https://github.com/bennet0496/nextcloud_attachments",
                         "style" => "color: rgb(200,200,200);"],
                         "nextcloud_attachments"),
-                    "author" => \html::tag("a", [
+                    "author" => html::tag("a", [
                         "href" => "https://github.com/bennet0496",
                         "style" => "color: rgb(200,200,200);"],
                         "Bennet B.")]])).
-                \html::tag("p", ["style" => "margin-top: -16px"], $this->gettext("icons").
+                html::tag("p", ["style" => "margin-top: -16px"], $this->gettext("icons").
                     ': <a style="color: rgb(200,200,200);" href="https://github.com/ubuntu/yaru">Ubuntu Yaru</a> (CC BY-SA 4.0), '.
                      '<a style="color: rgb(200,200,200);" href="https://developers.google.com/fonts/docs/material_icons">'.
                     'Material Icons</a> (Apache License 2.0).');
@@ -365,16 +374,15 @@ trait UploadFile {
         $html->set_env("FILESIZE", round($fs, 1) . " " . $u[$i] . "B");
         $html->set_env("ICONBLOB", base64_encode($mime_icon));
         $html->set_env("CHECKSUM", strtoupper($checksum) . " " . hash_file($checksum, $data["path"]));
-        $html->set_env("PASSWORD", $form_params["password"]);
+        $html->set_env("PASSWORD", @$form_params["password"]);
 
         // another hacky object handler
-        $html->add_handler("plugin.nextcloud_attachments.valid_until", function($ignore) use (&$form_params, &$expire_date, $dlang) {
+        $html->add_handler("plugin.nextcloud_attachments.valid_until", function(/* @noinspection PhpUnusedParameterInspection */$ignore) use (&$form_params, &$expire_date, $dlang) {
             if (isset($form_params["expireDate"]) && isset($expire_date)){
-                $fmt = new \IntlDateFormatter($dlang, \IntlDateFormatter::MEDIUM, \IntlDateFormatter::NONE);
+                $fmt = new IntlDateFormatter($dlang, IntlDateFormatter::MEDIUM, IntlDateFormatter::NONE);
                 $fmt->format($expire_date);
-                $t = $this->gettext(["name" => "valid_until_expires", "vars" => [
+                return $this->gettext(["name" => "valid_until_expires", "vars" => [
                     "validuntil" => $fmt->format($expire_date) ]]);
-                return $t;
             } else {
                 return $this->gettext("deletion");
             }
@@ -440,7 +448,7 @@ trait UploadFile {
                     fn ($k) => strtolower($this->rcmail->get_user_language()) == strtolower($k), ARRAY_FILTER_USE_KEY));
             } else if (in_array("en_us", $keys)) {
                 $folder = array_first(array_filter($folder,
-                    fn ($k) => "en_us" == strtolower($k), ARRAY_FILTER_USE_KEY));;
+                    fn ($k) => "en_us" == strtolower($k), ARRAY_FILTER_USE_KEY));
             } else {
                 $folder = array_first($folder);
             }

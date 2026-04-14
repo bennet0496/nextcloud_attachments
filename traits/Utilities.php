@@ -23,10 +23,11 @@
 
 namespace NextcloudAttachments;
 
+use Exception;
 use GuzzleHttp\Exception\GuzzleException;
 use IntlDateFormatter;
+use InvalidArgumentException;
 use rcmail;
-use rcube;
 
 function __(string $val): string
 {
@@ -173,7 +174,7 @@ trait Utilities
         $mail_local = $this->rcmail->user->get_username("local");
         $mail_domain = $this->rcmail->user->get_username("domain");
 
-        $imap_user = empty($_SESSION['username']) ? $mail_local : $_SESSION['username'];
+        $imap_user = empty($_SESSION['username']) ? $mail_local : @$_SESSION['username'];
 
         return str_replace(["%s", "%i", "%e", "%l", "%u", "%d", "%h"],
             [$user, $imap_user, $mail, $mail_local, $mail_local, $mail_domain, $_SESSION['storage_host'] ?? ""],
@@ -191,6 +192,7 @@ trait Utilities
      * @param $username string login
      * @param $password string login
      * @return bool|string unique filename or false on error
+     * @noinspection PhpUnusedPrivateMethodInspection
      */
     private function unique_filename(string $folder_uri, string $filename, string $username, string $password): bool|string
     {
@@ -216,6 +218,9 @@ trait Utilities
     }
 
     /** @noinspection PhpUnusedPrivateMethodInspection */
+    /**
+     * @throws GuzzleException
+     */
     private function resolve_destination_folder(string $folder_uri, string $file_path, string $username, string $password) : string | false
     {
         $folder_layout_locked = $this->rcmail->config->get(__("folder_layout_locked"), true);
@@ -224,10 +229,10 @@ trait Utilities
             $folder_layout = $this->rcmail->config->get(__("folder_layout"), "flat");
         } else {
             $prefs = $this->rcmail->user->get_prefs();
-            $user_folder_layout = $prefs[__("user_folder_layout")];
+            $user_folder_layout = @$prefs[__("user_folder_layout")];
             $folder_layout = match ($user_folder_layout) {
                 "default", null => $this->rcmail->config->get(__("folder_layout"), "flat"),
-                default => $prefs[__("user_folder_layout")]
+                default => @$prefs[__("user_folder_layout")]
             };
         }
 
@@ -279,6 +284,9 @@ trait Utilities
         return implode("/", $path_tokens);
     }
 
+    /**
+     * @noinspection PhpUnusedPrivateMethodInspection
+     */
     private function update_exclude(string $username, string $password, string $base_uri, string $folder): void
     {
         try{
@@ -296,9 +304,13 @@ trait Utilities
         }
     }
 
+    /**
+     * @throws Exception
+     * @noinspection PhpUnusedPrivateMethodInspection
+     */
     private function random_from_alphabet(int $len, string|array $alphabet): string {
         if ($len < 1) {
-            throw new \InvalidArgumentException("$len is less than or equal to 0");
+            throw new InvalidArgumentException("$len is less than or equal to 0");
         }
         if (is_string($alphabet)) {
             $alphabet = str_split($alphabet);
