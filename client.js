@@ -120,13 +120,14 @@ rcmail.addEventListener("plugin.nextcloud_upload_result", function(event) {
 
 
 
-            //create <a> link element
-            const link = document.createElement("a");
-            link.href = event.result?.url;
+            //create <span> link element
+            const link = document.createElement("span");
+            // link.href = event.result?.url;
             link.style.cssText = "text-decoration: none; color: black; display: grid; grid-template-columns: auto 1fr auto 0fr; grid-auto-rows: min-content; align-items: baseline; background: rgb(220,220,220); max-width: 400px; padding: 1em; border-radius: 10px; font-family: sans-serif";
 
-            const fn = document.createElement("span");
+            const fn = document.createElement("a");
             fn.innerText = event.result?.file?.name + "\n";
+            fn.href = event.result?.url;
             fn.style.cssText = "grid-area: 1 / 1;font-size: medium; max-width: 280px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; width: fit-content";
             link.append(fn);
 
@@ -135,8 +136,9 @@ rcmail.addEventListener("plugin.nextcloud_upload_result", function(event) {
             se.style.cssText = "grid-area: 1 / 2;margin-left: 1em; color: rgb(100,100,100); font-size: x-small; width: fit-content";
             link.append(se);
 
-            const url = document.createElement("span");
+            const url = document.createElement("a");
             url.innerText = event.result?.url;
+            url.href = event.result?.url;
             url.style.cssText = "grid-area: 2 / 1 / span 1 / span 3;color: rgb(100,100,100); align-self: end; font-size: small; /*max-width: 320px; text-overflow: ellipsis; overflow: hidden;*/ white-space: nowrap; width: fit-content";
             link.append(url);
 
@@ -149,7 +151,7 @@ rcmail.addEventListener("plugin.nextcloud_upload_result", function(event) {
                 pwtt.innerText = event.result.file.password
                 pwe.innerText = rcmail.gettext("password", "nextcloud_attachments") + ": ";
                 pwe.append(pwtt);
-                pwe.style.cssText = "grid-area: 3 / 1 / span 1 / span 3;color: rgb(100,100,100); align-self: end; font-size: small; max-width: 320px; text-overflow: ellipsis; overflow-x: hidden; width: fit-content";
+                pwe.style.cssText = "grid-area: 3 / 1 / span 1 / span 3;color: rgb(100,100,100); align-self: end; font-size: small; max-width: 320px; text-overflow: ellipsis; overflow-x: hidden; width: fit-content; user-select: all";
                 link.append(pwe);
                 has_pass = true;
             }
@@ -165,7 +167,8 @@ rcmail.addEventListener("plugin.nextcloud_upload_result", function(event) {
                 has_expire = true;
             }
 
-            const imgs = document.createElement("span");
+            const imgs = document.createElement("a");
+            imgs.href = event.result?.url;
             const rowspan = 3 + (has_pass ? 1 : 0) + (has_expire ? 1 : 0);
             imgs.style.cssText = "grid-area: 1 / 4 / span "+rowspan+" / span 1; align-self: center";
 
