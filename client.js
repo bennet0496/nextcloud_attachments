@@ -180,8 +180,11 @@ rcmail.addEventListener("plugin.nextcloud_upload_result", function(event) {
 
             const paragraph = document.createElement("p");
             paragraph.append(link);
-
-            rcmail.editor.editor.getBody().insertBefore(paragraph, sigElem);
+            try {
+                rcmail.editor.editor.getBody().insertBefore(paragraph, sigElem);
+            } catch (e) {
+                rcmail.editor.editor.getBody().append(paragraph);
+            }
         }
         rcmail.display_message(event.result?.file?.name + " " + rcmail.gettext("upload_success_link_inserted", "nextcloud_attachments"), "confirmation", 5000)
         const fid = event.result?.file?.id;
