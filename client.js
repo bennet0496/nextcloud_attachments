@@ -285,7 +285,6 @@ rcmail.addEventListener('init', function(evt) {
             return rcmail.__file_upload(files, post_args, props);
         }
 
-        // console.log(files);
         files = Array.from(files);
         //calculate file size
         const size = files.map(f => f.size).reduce((sum, val) =>  sum + val, 0);
@@ -389,7 +388,7 @@ rcmail.addEventListener('init', function(evt) {
                     // noinspection SpellCheckingInspection
                     const dialog = rcmail.show_popup_dialog(
                         rcmail.gettext("file_big_not_logged_in_explain", "nextcloud_attachments")
-                            .replace("%size%", human_limit.toFixed(0) + " " + unit[unit_idx] + "B"),
+                            .replace("%size%", human_size.toFixed(0) + " " + unit[unit_idx] + "B"),
                         rcmail.gettext("file_big", "nextcloud_attachments"), [
                             {
                                 text: rcmail.gettext("login_and_link_file", "nextcloud_attachments"),
