@@ -48,6 +48,9 @@ trait UploadFile {
      */
     public function upload(array $data): array
     {
+        self::debug(debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 4));
+        self::debug("upload", $data);
+
         if (@$_REQUEST['_target'] !== "cloud") {
             //file not marked to cloud. we won't touch it.
             return $data;
@@ -419,6 +422,15 @@ trait UploadFile {
 
         unlink($data["path"]);
 
+        // use common temp dir for file uploads
+        $tmpfname = \rcube_utils::temp_filename('cattmnt');
+
+        file_put_contents($tmpfname, $tmpl);
+
+        $_SESSION['plugins']['nextcloud_attachments'][$data["group"]][$id] = $tmpfname;
+
+        self::debug('generated attach template', $tmpl);
+
         //return a html page as attachment that provides the download link
         return [
             "id" => $id,
@@ -427,7 +439,7 @@ trait UploadFile {
             "name" => $data["name"] . ".html", //append html suffix
             "mimetype" => "text/html",
             "data" => $tmpl, //just return the few KB text, we deleted the file
-            "path" => "cloud:".$folder . "/" . $filename,
+            "path" => $tmpfname, //"cloud:".$folder . "/" . $filename,
             "size" => strlen($tmpl),
             "target" => "cloud", //cloud attachment meta data
             "uri" => $url . "/download",

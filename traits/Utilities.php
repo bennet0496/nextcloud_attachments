@@ -41,6 +41,9 @@ trait Utilities
     {
         foreach ($lines as $line) {
             $bt = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2)[1];
+            if ($bt["function"] == "debug") {
+                $bt = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 3)[2];
+            }
             $func = $bt["function"];
             $cls = $bt["class"];
             if (!is_string($line)) {
@@ -54,6 +57,13 @@ trait Utilities
                     rcmail::write_log(NC_ATTACH_LOG_FILE, str_pad("...", strlen("[" . NC_ATTACH_PREFIX . "] "), " ", STR_PAD_BOTH) . "{" . $cls . "::" . $func . "} " . $l);
                 }
             }
+        }
+    }
+
+    private static function debug(...$lines): void
+    {
+        if (rcmail::get_instance()->config->get('devel_mode', false) || rcmail::get_instance()->config->get(__('debug'), false)){
+            self::log(...$lines);
         }
     }
 

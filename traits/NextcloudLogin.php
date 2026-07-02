@@ -77,7 +77,7 @@ trait NextcloudLogin {
     {
         //Cached Result
         if (isset($_SESSION['plugins']['nextcloud_attachments']) &&
-            $_SESSION['plugins']['nextcloud_attachments']['login_result']) {
+            @$_SESSION['plugins']['nextcloud_attachments']['login_result']) {
             return $_SESSION['plugins']['nextcloud_attachments']['login_result'];
         }
 

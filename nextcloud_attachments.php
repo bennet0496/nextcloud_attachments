@@ -33,7 +33,7 @@ if (!class_exists("GuzzleHttp\Client")) {
 
 const NC_ATTACH_PREFIX = "nextcloud_attachment";
 const NC_ATTACH_LOG_FILE = "ncattach";
-const NC_ATTACH_VERSION = "1.5";
+const NC_ATTACH_VERSION = "2.1";
 
 require_once dirname(__FILE__) . "/traits/Preferences.php";
 require_once dirname(__FILE__) . "/traits/InterceptAttachment.php";
@@ -55,6 +55,7 @@ class nextcloud_attachments extends rcube_plugin
 
     public function init(): void
     {
+        self::debug("initializing plugin");
         $this->rcmail = rcmail::get_instance();
         $this->load_config("config.inc.php.dist");
         $this->load_config();
@@ -104,6 +105,8 @@ class nextcloud_attachments extends rcube_plugin
 
         //correct the cloud attachment size for retrieval
         $this->add_hook('attachment_get', function ($param) {
+            self::debug("hook_attachment_get", $param);
+
             if (@$param["target"] === "cloud") {
                 $param["mimetype"] = "application/nextcloud_attachment; url=" . $param["uri"]; //Mark attachment for later interception
                 $param["status"] = true;
@@ -122,11 +125,17 @@ class nextcloud_attachments extends rcube_plugin
         //hook to upload the file
         $this->add_hook("attachment_upload", function ($param) { return $this->upload($param); });
 
+        $this->add_hook("attachment_save", function ($param) { return $this->save($param); });
+
         $this->add_hook("preferences_list", function ($param) { return $this->add_preferences($param); });
 
         $this->add_hook("preferences_save", function ($param) { return $this->save_preferences($param); });
 
         $this->add_hook("attachment_delete", function ($param) { return $this->delete($param); });
+
+        // Delete all temp files associated with this user
+        $this->add_hook('attachments_cleanup', [$this, 'cleanup']);
+        $this->add_hook('session_destroy', [$this, 'cleanup']);
 
     }
 

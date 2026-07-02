@@ -35,8 +35,10 @@ trait DeleteAttachment {
      */
     public function delete(array $param): array
     {
-        if (@$_POST["_ncremove"] === "true" &&
-            @str_starts_with(@$param["path"], "cloud:") && @$param["target"] === "cloud") {
+        if (self::verify_path($param['path']))
+            @unlink($param['path']);
+
+        if (@$_POST["_ncremove"] === "true" && @$param["target"] === "cloud") {
             $prefs = $this->rcmail->user->get_prefs();
 
             $server = $this->rcmail->config->get(__("server"));
@@ -61,4 +63,69 @@ trait DeleteAttachment {
 
         return $param;
     }
+
+    public function cleanup(array $param): array
+    {
+        // taken from filesystem_attachments
+        if (!empty($_SESSION['plugins']['nextcloud_attachments'])) {
+            foreach ($_SESSION['plugins']['nextcloud_attachments'] as $group => $files) {
+                if (!empty($param['group']) && $param['group'] != $group) {
+                    continue;
+                }
+
+                foreach ((array) $files as $filename) {
+                    if (file_exists($filename)) {
+                        unlink($filename);
+                    }
+                }
+
+                unset($_SESSION['plugins']['nextcloud_attachments'][$group]);
+            }
+        }
+
+        return $param;
+
+    }
+
+    // from filesystem_attachments
+    protected static function verify_path($path)
+    {
+        if (empty($path)) {
+            return false;
+        }
+
+        $rcmail    = \rcube::get_instance();
+        $temp_dir  = $rcmail->config->get('temp_dir');
+        $file_path = pathinfo($path, PATHINFO_DIRNAME);
+
+        if ($temp_dir !== $file_path) {
+            // When the configured directory is not writable, or out of open_basedir path
+            // tempnam() fallbacks to system temp without a warning.
+            // We allow that, but we'll let to know the user about the misconfiguration.
+            if ($file_path == sys_get_temp_dir()) {
+                \rcube::raise_error([
+                    'file'    => __FILE__,
+                    'line'    => __LINE__,
+                    'message' => "Detected 'temp_dir' change. "
+                        . "Access to '$temp_dir' restricted by filesystem permissions or open_basedir",
+                ], true, false
+                );
+
+                return true;
+            }
+
+            \rcube::raise_error([
+                'file'    => __FILE__,
+                'line'    => __LINE__,
+                'message' => sprintf("%s can't read %s (not in temp_dir)",
+                    $rcmail->get_user_name(), substr($path, 0, 512))
+            ], true, false
+            );
+
+            return false;
+        }
+
+        return true;
+    }
+
 }
