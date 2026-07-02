@@ -110,8 +110,8 @@ class nextcloud_attachments extends rcube_plugin
             if (@$param["target"] === "cloud") {
                 $param["mimetype"] = "application/nextcloud_attachment; url=" . $param["uri"]; //Mark attachment for later interception
                 $param["status"] = true;
-                $param["size"] = strlen($param["data"]);
-                $param["path"] = null;
+//                $param["size"] = strlen($param["data"]);
+//                $param["path"] = null;
             }
             return $param;
         });
@@ -126,6 +126,8 @@ class nextcloud_attachments extends rcube_plugin
         $this->add_hook("attachment_upload", function ($param) { return $this->upload($param); });
 
         $this->add_hook("attachment_save", function ($param) { return $this->save($param); });
+
+        $this->add_hook('message_compose', function ($param) { return $this->draft_restore($param); });
 
         $this->add_hook("preferences_list", function ($param) { return $this->add_preferences($param); });
 

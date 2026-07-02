@@ -467,4 +467,50 @@ trait UploadFile {
         }
         return $folder;
     }
+
+    public function draft_restore($param) {
+        if (!array_key_exists('param', $param) || empty($param['param']['draft_uid']) || empty($param['param']['mbox']))
+            return $param;
+
+        $attachments = [];
+        /**
+         * @var \rcube_message_header $msg
+         */
+        $msg = $this->rcmail->storage->get_message($param['param']['draft_uid'], $param['param']['mbox']);
+        foreach ($msg->structure->parts as /** @var \rcube_message_part $part */ $part) {
+            if (array_key_exists("x-mozilla-cloud-part",$part->headers) && str_starts_with($part->headers['x-mozilla-cloud-part'], "cloudFile")) {
+                self::debug($part);
+                $tmpfname = \rcube_utils::temp_filename('cattmnt');
+
+                $body = $this->rcmail->storage->get_body($msg->uid, $part->mime_id);
+                file_put_contents($tmpfname, $body);
+
+                $attachments[] = [
+                    "status" => true,
+                    "name" => $part->filename,
+                    "mimetype" => "text/html",
+                    "path" => $tmpfname,
+                    "size" => strlen($body),
+                    "target" => "cloud", //cloud attachment meta data
+                    "uri" => str_replace("cloudFile; url=", "", $part->headers['x-mozilla-cloud-part']),
+                    "break" => true //no other plugin should process this attachment future
+                ];
+            }
+        }
+
+        return [...$param, "attachments" => $attachments];
+    }
+
+    public function save($param)
+    {
+        self::debug("attachment_save", $param);
+
+        $param['id']     = $this->rcmail->user->ID . rand();
+        $param['status'] = true;
+
+        // Note the file for later cleanup
+        $_SESSION['plugins']['nextcloud_attachments'][$param['group']][$param['id']] = $param['path'];
+
+        return $param;
+    }
 }

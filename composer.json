@@ -21,8 +21,8 @@
         "ext-json": "*",
         "ext-intl": "*",
         "ext-openssl": "*",
-        "roundcube/plugin-installer": "^0.3",
-        "guzzlehttp/guzzle": "^7.8"
+        "roundcube/plugin-installer": "^0.3.11",
+        "guzzlehttp/guzzle": "^7.13.1"
     },
     "extra": {
         "roundcube": {
