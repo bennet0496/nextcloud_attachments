@@ -469,6 +469,8 @@ trait UploadFile {
     }
 
     public function draft_restore($param) {
+        self::debug("draft_restore", $param);
+
         if (!array_key_exists('param', $param) || empty($param['param']['draft_uid']) || empty($param['param']['mbox']))
             return $param;
 
@@ -477,13 +479,25 @@ trait UploadFile {
          * @var \rcube_message_header $msg
          */
         $msg = $this->rcmail->storage->get_message($param['param']['draft_uid'], $param['param']['mbox']);
+//        self::debug($msg);
+
         foreach ($msg->structure->parts as /** @var \rcube_message_part $part */ $part) {
-            if (array_key_exists("x-mozilla-cloud-part",$part->headers) && str_starts_with($part->headers['x-mozilla-cloud-part'], "cloudFile")) {
+            $raw_headers = $this->rcmail->storage->get_raw_headers($msg->uid, $part->mime_id);
+            if ((array_key_exists("x-mozilla-cloud-part",$part->headers) && str_starts_with($part->headers['x-mozilla-cloud-part'], "cloudFile")) ||
+                ($part->mimetype == 'text/html' && str_contains($raw_headers,'X-Mozilla-Cloud-Part: cloudFile'))) {
                 self::debug($part);
                 $tmpfname = \rcube_utils::temp_filename('cattmnt');
 
                 $body = $this->rcmail->storage->get_body($msg->uid, $part->mime_id);
                 file_put_contents($tmpfname, $body);
+
+                if (array_key_exists('x-mozilla-cloud-part', $part->headers)) {
+                    $uri = str_replace("cloudFile; url=", "", $part->headers['x-mozilla-cloud-part']);
+                } else {
+                    preg_match("/X-Mozilla-Cloud-Part: cloudFile; url=(.*?)\n/", $raw_headers, $matches);
+                    self::debug($matches);
+                    $uri = $matches[1];
+                }
 
                 $attachments[] = [
                     "status" => true,
@@ -492,7 +506,7 @@ trait UploadFile {
                     "path" => $tmpfname,
                     "size" => strlen($body),
                     "target" => "cloud", //cloud attachment meta data
-                    "uri" => str_replace("cloudFile; url=", "", $part->headers['x-mozilla-cloud-part']),
+                    "uri" => $uri,
                     "break" => true //no other plugin should process this attachment future
                 ];
             }
