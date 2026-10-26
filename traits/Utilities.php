@@ -98,20 +98,13 @@ trait Utilities
 
         // exclude directly deny listed address books
         if (is_array($exg) && count($exg) > 0) {
-            foreach ($exg as $book) {
+            foreach ($exg as $book_id) {
                 /** @noinspection SpellCheckingInspection */
-                $abook = $this->rcmail->get_address_book($book);
-                if ($abook) {
-                    if (array_key_exists("uid", $book->coltypes)) {
-                        $entries = $book->search(["email", "uid"], [$this->rcmail->get_user_email(), $this->resolve_username()]);
-                    } else {
-                        $entries = $book->search("email", $this->rcmail->get_user_email());
-                    }
-                    if ($entries) {
-                        self::log("access for " . $this->resolve_username() .
-                            " disabled in " . $book->get_name() . " because they exist in there");
-                        return true;
-                    }
+                $abook = $this->rcmail->get_address_book($book_id);
+                if ($abook && ($entries = $this->search_self($abook)) && $entries->count > 0) {
+                    self::log("access for " . $this->resolve_username() .
+                        " disabled in " . $abook->get_name() . " because they exist in there");
+                    return true;
                 }
             }
         }
@@ -128,10 +121,9 @@ trait Utilities
                     $attr = $val[1];
                     $match = $val[2];
 
-                    if (array_key_exists("uid", $book->coltypes)) {
-                        $entries = $book->search(["email", "uid"], [$this->rcmail->get_user_email(), $this->resolve_username()]);
-                    } else {
-                        $entries = $book->search("email", $this->rcmail->get_user_email());
+                    if (!$book) {
+                        self::log("address book " . $val[0] . " not found");
+                        continue;
                     }
 
                     if ($entries) {
@@ -159,9 +151,14 @@ trait Utilities
                     $book = $this->rcmail->get_address_book($val[0]);
                     $group = $val[1];
 
+                    if (!$book) {
+                        self::log("address book " . $val[0] . " not found");
+                        continue;
+                    }
+
                     $groups = $book->get_record_groups(base64_encode($this->resolve_username()));
 
-                    if (in_array($group, $groups)) {
+                    if (is_array($groups) && in_array($group, $groups)) {
                         self::log("access for " . $this->resolve_username() .
                             " disabled in " . $book->get_name() . " because of group membership " . $group);
                         return true;
@@ -171,6 +168,18 @@ trait Utilities
         }
 
         return false;
+    }
+
+    /**
+     * Search the current user in an address book
+     */
+    private function search_self(\rcube_addressbook $book): ?\rcube_result_set
+    {
+        $has_uid = array_key_exists("uid", $book->coltypes) || in_array("uid", $book->coltypes);
+        if ($has_uid) {
+            return $book->search(["email", "uid"], [$this->rcmail->get_user_email(), $this->resolve_username()]);
+        }
+        return $book->search("email", $this->rcmail->get_user_email());
     }
 
     /**
