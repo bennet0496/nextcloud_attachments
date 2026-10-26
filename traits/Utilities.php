@@ -58,10 +58,6 @@ trait Utilities
             unset($llines[0]);
             if (count($llines) > 0) {
                 foreach ($llines as $l) {
-                    rcmail::write_log(NC_ATTACH_LOG_FILE, str_pad("...", strlen("[" . NC_ATTACH_PREFIX . "] "), " ", STR_PAD_BOTH) . "{" . $cls . "::" . $func . "} " . $l);
-                }
-            }
-        }
                     rcmail::write_log(NC_ATTACH_LOG_FILE, str_pad("...", strlen("[" . NC_ATTACH_PREFIX . "] "), " ", STR_PAD_BOTH) . "{" . $cls . "::" . $func . ":".$fline. "} " . $l);
                 }
             }
@@ -144,6 +140,7 @@ trait Utilities
                         continue;
                     }
 
+                    $entries = $this->search_self($book);
                     if ($entries) {
                         while ($e = $entries->iterate()) {
                             if (array_key_exists($attr, $e) && ($e[$attr] == $match ||
