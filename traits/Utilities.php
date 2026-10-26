@@ -39,18 +39,22 @@ trait Utilities
 
     private static function log(...$lines): void
     {
+        $bt = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2)[1];
+        $bt0 = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2)[0];
+        if ($bt["function"] == "debug" || $bt["function"] == "log_exception") {
+            $bt = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 3)[2];
+            $bt0 = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 3)[1];
+        }
+        $func = $bt["function"];
+        $cls = $bt["class"];
+        $fline = $bt0["line"];
+
         foreach ($lines as $line) {
-            $bt = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2)[1];
-            if ($bt["function"] == "debug") {
-                $bt = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 3)[2];
-            }
-            $func = $bt["function"];
-            $cls = $bt["class"];
             if (!is_string($line)) {
                 $line = print_r($line, true);
             }
             $llines = explode(PHP_EOL, $line);
-            rcmail::write_log(NC_ATTACH_LOG_FILE, "[" . NC_ATTACH_PREFIX . "] {" . $cls . "::" . $func . "} " . $llines[0]);
+            rcmail::write_log(NC_ATTACH_LOG_FILE, "[" . NC_ATTACH_PREFIX . "] {" . $cls . "::" . $func . ":".$fline. "} " . $llines[0]);
             unset($llines[0]);
             if (count($llines) > 0) {
                 foreach ($llines as $l) {
@@ -58,6 +62,20 @@ trait Utilities
                 }
             }
         }
+                    rcmail::write_log(NC_ATTACH_LOG_FILE, str_pad("...", strlen("[" . NC_ATTACH_PREFIX . "] "), " ", STR_PAD_BOTH) . "{" . $cls . "::" . $func . ":".$fline. "} " . $l);
+                }
+            }
+        }
+    }
+
+    private static function log_exception(string $context, \Throwable $e): void
+    {
+        $line = $context . ": " . get_class($e) . ": " . $e->getMessage();
+        if ($e instanceof \GuzzleHttp\Exception\RequestException) {
+            $uri = $e->getRequest()->getUri()->withUserInfo("");
+            $line .= " (" . $e->getRequest()->getMethod() . " " . $uri . ")";
+        }
+        self::log($line);
     }
 
     private static function debug(...$lines): void
