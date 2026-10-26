@@ -74,6 +74,16 @@ trait Utilities
      */
     private function is_disabled(): bool
     {
+        if(!isset($_SESSION['plugins']['nextcloud_attachments']['disabled'])) {
+            // address book lookup cache
+            $_SESSION['plugins']['nextcloud_attachments']['disabled'] = $this->check_disabled();
+        }
+
+        return $_SESSION['plugins']['nextcloud_attachments']['disabled'];
+    }
+
+    private function check_disabled(): bool
+    {
         $ex = $this->rcmail->config->get(__("exclude_users"), []);
         $exg = $this->rcmail->config->get(__("exclude_users_in_addr_books"), []);
         $exa = $this->rcmail->config->get(__("exclude_users_with_addr_book_value"), []);
