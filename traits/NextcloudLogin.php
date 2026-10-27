@@ -96,7 +96,6 @@ trait NextcloudLogin {
         //test webdav login
         try {
             $res = $this->client->request("PROPFIND", $this->dav_files_uri($creds['user']), ['auth' => [$creds["user"], $creds["password"]]]);
-            /** @noinspection SpellCheckingInspection */
             $scode = $res->getStatusCode();
             switch ($scode) {
                 case 401:
@@ -232,7 +231,6 @@ trait NextcloudLogin {
         if ($revoke) {
             $creds = $this->get_credentials();
             try {
-                /** @noinspection SpellCheckingInspection */
                 $this->client->delete($this->rcmail->config->get(__("server")) . "/ocs/v2.php/core/apppassword", [
                     'headers' => ['OCS-APIRequest' => 'true'],
                     'auth' => [$creds["user"], $creds["password"]]

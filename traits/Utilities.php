@@ -111,7 +111,6 @@ trait Utilities
         $ex = $this->rcmail->config->get(__("exclude_users"), []);
         $exg = $this->rcmail->config->get(__("exclude_users_in_addr_books"), []);
         $exa = $this->rcmail->config->get(__("exclude_users_with_addr_book_value"), []);
-        /** @noinspection SpellCheckingInspection */
         $exag = $this->rcmail->config->get(__("exclude_users_in_addr_book_group"), []);
 
         // exclude directly deny listed users
@@ -123,7 +122,6 @@ trait Utilities
         // exclude directly deny listed address books
         if (is_array($exg) && count($exg) > 0) {
             foreach ($exg as $book_id) {
-                /** @noinspection SpellCheckingInspection */
                 $abook = $this->rcmail->get_address_book($book_id);
                 if ($abook && ($entries = $this->search_self($abook)) && $entries->count > 0) {
                     self::log("access for " . $this->resolve_username() .
@@ -168,7 +166,6 @@ trait Utilities
         // exclude users in groups
         if (is_array($exag) && count($exag) > 0) {
             if (!is_array($exag[0])) {
-                /** @noinspection SpellCheckingInspection */
                 $exag = [$exag];
             }
             foreach ($exag as $val) {

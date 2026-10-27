@@ -23,7 +23,7 @@
         "ext-openssl": "*",
         "roundcube/plugin-installer": "^0.3.12",
         "guzzlehttp/guzzle": "^7.16.1",
-        "ramsey/uuid": "^4.9"
+        "symfony/polyfill-php85": "^1.43"
     },
     "extra": {
         "roundcube": {
