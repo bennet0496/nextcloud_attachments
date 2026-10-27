@@ -35,32 +35,38 @@ trait DeleteAttachment {
      */
     public function delete(array $param): array
     {
-        if (self::verify_path($param['path']))
-            @unlink($param['path']);
-
         if (@$_POST["_ncremove"] === "true" && @$param["target"] === "cloud") {
-            $prefs = $this->rcmail->user->get_prefs();
+            if (empty($param["remote_path"])) {
+                // attachments restored from drafts or created by older versions don't know their remote file
+                $this->rcmail->output->command('plugin.nextcloud_delete_result', ['status' => 'error', 'file' => $param['id']]);
+                return ["status" => false, "abort" => true];
+            }
 
             $server = $this->rcmail->config->get(__("server"));
             $username = isset($prefs["nextcloud_login"]) ? $prefs["nextcloud_login"]["loginName"] : $this->resolve_username($this->rcmail->get_user_name());
             $password = isset($prefs["nextcloud_login"]) ? $prefs["nextcloud_login"]["appPassword"] : $this->rcmail->get_user_password();
 
             $path = implode("/", array_map(function ($tok) { return rawurlencode($tok); },
-                explode("/", substr($param["path"], strlen("cloud:")))));
+                explode("/", $param["remote_path"])));
             try {
-                $res = $this->client->delete($server . "/remote.php/dav/files/" . $username . "/" . $path, ["auth" => [$username, $password]]);
-                if($res->getStatusCode() >= 400) {
                 $res = $this->client->delete($this->dav_files_uri($creds['user']) . "/" . $path, ["auth" => [$creds["login"], $creds["password"]]]);
+                // already gone is fine
+                if ($res->getStatusCode() >= 400 && $res->getStatusCode() != 404) {
                     $this->rcmail->output->command('plugin.nextcloud_delete_result', ['status' => 'error', 'message' => $res->getReasonPhrase(), 'file' => $param['id']]);
                     return ["status" => false, "abort" => true, "error" => $res->getReasonPhrase()];
-                } else {
-                    return ["status" => "ok"];
                 }
             } catch (GuzzleException $e) {
                 self::log_exception($username . " delete request failed", $e);
                 $this->rcmail->output->command('plugin.nextcloud_delete_result', ['status' => 'error', 'file' => $param['id']]);
                 return ["status" => false, "abort" => true];
             }
+        }
+
+        if (self::verify_path($param['path']))
+            @unlink($param['path']);
+
+        if (@$param["target"] === "cloud") {
+            $param["status"] = true;
         }
 
         return $param;

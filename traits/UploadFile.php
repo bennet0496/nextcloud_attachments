@@ -32,6 +32,8 @@ use html;
 use IntlDateFormatter;
 use rcmail_output_html;
 use SimpleXMLElement;
+use Ramsey\Uuid\Uuid;
+
 
 require_once dirname(__FILE__) . "/../Modifiable_Mail_mime.php";
 
@@ -143,12 +145,20 @@ trait UploadFile {
         }
 
         // resolve the folder layout
-        $folder_suffix = $this->resolve_destination_folder($folder_uri, $data["path"], $username, $password);
+        try {
+            $folder_suffix = $this->resolve_destination_folder($folder_uri, $data["path"], $username, $password);
+        } catch (GuzzleException $e) {
+            self::log_exception($username . " folder layout creation failed", $e);
+            $folder_suffix = false;
+        }
+        if ($folder_suffix === false) {
+            $this->rcmail->output->command('plugin.nextcloud_upload_result', ['status' => 'folder_error']);
+            return ["status" => false, "abort" => true];
+        }
         if ($folder_suffix) {
             $folder .= "/" . $folder_suffix;
-            $folder_uri .= "/" . $folder_suffix;
+            $folder_uri .= "/" . implode("/", array_map("rawurlencode", explode("/", $folder_suffix)));
         }
-//        self::log($folder_uri);
 
         //get unique filename
         $filename = $this->unique_filename($folder_uri, $data["name"], $username, $password);
@@ -448,6 +458,7 @@ trait UploadFile {
             "size" => strlen($tmpl),
             "target" => "cloud", //cloud attachment meta data
             "uri" => $url . "/download",
+            "remote_path" => $folder . "/" . $filename,
             "break" => true //no other plugin should process this attachment future
         ];
     }
@@ -528,7 +539,7 @@ trait UploadFile {
         $param['status'] = true;
 
         // Note the file for later cleanup
-        $_SESSION['plugins']['nextcloud_attachments'][$param['group']][$param['id']] = $param['path'];
+        $_SESSION['plugins']['nextcloud_attachments']['files'][$param['group']][$param['id']] = $param['path'];
 
         return $param;
     }
