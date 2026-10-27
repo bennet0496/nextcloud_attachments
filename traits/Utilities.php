@@ -248,6 +248,10 @@ trait Utilities
             while (($code = $this->client->request("PROPFIND", $folder_uri . "/" . rawurlencode($fn),
                     ['auth' => [$username, $password]])->getStatusCode()) != 404) {
                 $d = strrpos($filename, ".");
+                if (!$d) {
+                    // no extension (or dotfile), append the counter
+                    $d = strlen($filename);
+                }
                 $fn = substr($filename, 0, $d) . " " . ++$i . substr($filename, $d);
                 if ($i > 100 || $code >= 500) {
                     return false;
