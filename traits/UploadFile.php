@@ -171,10 +171,70 @@ trait UploadFile {
             return ["status" => false, "abort" => true];
         }
 
-        //upload file
-        $body = Psr7\Utils::tryFopen($data["path"], 'r');
+
+        $resource = Psr7\Utils::tryFopen($data["path"], 'r');
+        $size = filesize($data["path"]);
+        $upload_id = Uuid::uuid4()->toString();
+
+        $chunksize = 5 * 1024 * 1024; // 5MB
+        while ($size / $chunksize > 10_000) {
+            $chunksize += 5 * 1024 * 1024;
+        }
+
+        if ($chunksize > 5 * 1024 * 1024 * 1024) { // > 5GB
+            $this->rcmail->output->command('plugin.nextcloud_upload_result', ['status' => 'size_error']);
+            return ["status" => false, "abort" => true];
+        }
+
+        self::debug("preparing chunked upload ",$size, $upload_id);
+
         try {
-            $res = $this->client->put($folder_uri . "/" . rawurlencode($filename), ["body" => $body, 'auth' => [$username, $password]]);
+            $res = $this->client->request("MKCOL", $this->dav_upload_uri($creds['user'], $upload_id), [
+                "auth" => [$username, $password],
+                "headers" => [
+                    "Destination" => $folder_uri . "/" . rawurlencode($filename)
+                ]
+            ]);
+
+            self::debug($res->getStatusCode(), $res->getReasonPhrase(), $res->getBody()->getContents());
+
+            $ctr = 1;
+
+            while(!feof($resource)) {
+                $res = $this->client->put($this->dav_upload_uri($creds['user'], $upload_id) . "/" . sprintf("%05d", $ctr), [
+                    "body" => fread($resource, $chunksize),
+                    "headers" => [
+                        "Destination" => $folder_uri . "/" . rawurlencode($filename),
+                        "OC-Total-Length" => $size
+                    ],
+                    "auth" => [$username, $password]
+                ]);
+                self::debug("chunk ".sprintf("%05d", $ctr), $res->getStatusCode(), $res->getReasonPhrase(), $res->getBody()->getContents());
+                $ctr++;
+            }
+
+            $res = $this->client->request("MOVE", $this->dav_upload_uri($creds['user'], $upload_id) . "/.file", [
+                "auth" => [$username, $password],
+                "headers" => [
+                    "Destination" => $folder_uri . "/" . rawurlencode($filename),
+                    "Overwrite" => "F",
+                    "OC-Total-Length" => $size
+                ]
+            ]);
+
+            self::debug("upload result", $res->getStatusCode(), $res->getReasonPhrase(), $res->getBody()->getContents());
+
+            if ($res->getStatusCode() >= 400) {
+                $this->rcmail->output->command('plugin.nextcloud_upload_result', ['status' => 'upload_error']);
+                return ["status" => false, "abort" => true];
+            }
+
+        } catch (GuzzleException $e) {
+            self::log_exception($username . " put failed", $e);
+            $this->rcmail->output->command('plugin.nextcloud_upload_result', ['status' => 'upload_error']);
+            return ["status" => false, "abort" => true];
+        }
+//        } while ($res->getStatusCode() == 412 && ++$attempts < 3);
 
         if ($res->getStatusCode() != 200 && $res->getStatusCode() != 201) {
             $body = $res->getBody()->getContents();

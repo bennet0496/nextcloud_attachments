@@ -116,7 +116,7 @@ following parameters
 
 ```php
 // Generate Password protected link.
-// Passwords will be included in the message body only, not in the HTML attachment
+// Passwords will be included in the message body and the HTML attachment
 // Defaults to false
 $config["nextcloud_attachment_password_protected_links"] = false;
 
