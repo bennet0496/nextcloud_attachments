@@ -107,7 +107,7 @@ trait NextcloudLogin {
 
         //test webdav login
         try {
-            $res = $this->client->request("PROPFIND", $server . "/remote.php/dav/files/" . $username, ['auth' => [$username, $password]]);
+            $res = $this->client->request("PROPFIND", $this->dav_files_uri($creds['user']), ['auth' => [$creds["login"], $creds["password"]]]);
             /** @noinspection SpellCheckingInspection */
             $scode = $res->getStatusCode();
             switch ($scode) {

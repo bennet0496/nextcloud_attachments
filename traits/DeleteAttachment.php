@@ -50,6 +50,7 @@ trait DeleteAttachment {
             try {
                 $res = $this->client->delete($server . "/remote.php/dav/files/" . $username . "/" . $path, ["auth" => [$username, $password]]);
                 if($res->getStatusCode() >= 400) {
+                $res = $this->client->delete($this->dav_files_uri($creds['user']) . "/" . $path, ["auth" => [$creds["login"], $creds["password"]]]);
                     $this->rcmail->output->command('plugin.nextcloud_delete_result', ['status' => 'error', 'message' => $res->getReasonPhrase(), 'file' => $param['id']]);
                     return ["status" => false, "abort" => true, "error" => $res->getReasonPhrase()];
                 } else {

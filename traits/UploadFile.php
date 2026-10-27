@@ -93,7 +93,7 @@ trait UploadFile {
         $folder = $this->get_folder();
 
         //full link with urlencoded folder (space must be %20 and not +)
-        $folder_uri = $server . "/remote.php/dav/files/" . $username . "/" . rawurlencode($folder);
+        $folder_uri = $this->dav_files_uri($creds['user']) . "/" . implode("/", array_map("rawurlencode", explode("/", $folder)));
 
         //check folder
         try {
@@ -103,7 +103,7 @@ trait UploadFile {
                 //attempt to create the folder
                 try {
                     if ($this->rcmail->config->get(__("sync_exclude_lst"), false)) {
-                        $this->update_exclude($username, $password, $server . "/remote.php/dav/files/" . $username, $folder);
+                        $this->update_exclude($username, $password, $this->dav_files_uri($creds['user']), $folder);
                     }
                     $res = $this->client->request("MKCOL", $folder_uri, ['auth' => [$username, $password]]);
 

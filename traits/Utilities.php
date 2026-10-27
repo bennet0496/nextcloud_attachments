@@ -81,6 +81,16 @@ trait Utilities
         }
     }
 
+    private function dav_files_uri(string $user): string
+    {
+        return $this->rcmail->config->get(__("server")) . "/remote.php/dav/files/" . rawurlencode($user);
+    }
+
+    private function dav_upload_uri(string $user, string $upload_id): string
+    {
+        return $this->rcmail->config->get(__("server")) . "/remote.php/dav/uploads/" . rawurlencode($user). "/". $upload_id;
+    }
+
     /**
      * Detect whether the user should be allowed to interact with the plugin
      *
