@@ -258,7 +258,7 @@ trait Utilities
                 }
             }
         } catch (GuzzleException $e) {
-            self::log($username . " file request failed: " . print_r($e, true));
+            self::log_exception($username . " file request failed", $e);
             return false;
         }
 
@@ -353,7 +353,7 @@ trait Utilities
             }
             $this->client->put($base_uri. "/.sync-exclude.lst", ['auth' => [$username, $password], 'body' => implode(PHP_EOL, $list)]);
         } catch (GuzzleException $e) {
-            self::log($e);
+            self::log_exception("update exclude list failed", $e);
         }
     }
 

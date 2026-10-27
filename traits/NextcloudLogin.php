@@ -141,7 +141,7 @@ trait NextcloudLogin {
                     return ['status' => null, 'code' => $scode, 'message' => $res->getReasonPhrase()];
             }
         } catch (GuzzleException $e) {
-            self::log($this->rcmail->get_user_name() . " login check request failed: " . print_r($e, true));
+            self::log_exception($this->rcmail->get_user_name() . " login check request failed", $e);
             return ['status' => null];
         }
     }
@@ -211,7 +211,7 @@ trait NextcloudLogin {
                     unset($_SESSION['plugins']['nextcloud_attachments']);
                 }
             } catch (GuzzleException $e) {
-                self::log("poll failed: " . print_r($e, true));
+                self::log_exception("poll failed", $e);
             }
         }
     }

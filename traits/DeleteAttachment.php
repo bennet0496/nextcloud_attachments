@@ -56,8 +56,9 @@ trait DeleteAttachment {
                     return ["status" => "ok"];
                 }
             } catch (GuzzleException $e) {
+                self::log_exception($username . " delete request failed", $e);
                 $this->rcmail->output->command('plugin.nextcloud_delete_result', ['status' => 'error', 'file' => $param['id']]);
-                self::log($username . " delete request failed: " . print_r($e, true));
+                return ["status" => false, "abort" => true];
             }
         }
 

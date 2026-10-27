@@ -112,7 +112,7 @@ trait UploadFile {
                         try {
                             $xml = new SimpleXMLElement($body);
                         } catch (Exception $e) {
-                            self::log($username . " xml parsing failed: " . print_r($e, true));
+                            self::log_exception($username . " xml parsing failed", $e);
                             $xml = [];
                         }
 
@@ -127,7 +127,9 @@ trait UploadFile {
                         return ["status" => false, "abort" => true, "error" => $res->getReasonPhrase()];
                     }
                 } catch (GuzzleException $e) {
-                    self::log($username . " mkcol request failed: " . print_r($e, true));
+                    self::log_exception($username . " mkcol request failed", $e);
+                    $this->rcmail->output->command('plugin.nextcloud_upload_result', ['status' => 'folder_error']);
+                    return ["status" => false, "abort" => true];
                 }
             } else if ($res->getStatusCode() > 400) { //we can't access the folder
                 self::log($username . " propfind failed " . $res->getStatusCode() . PHP_EOL . $res->getBody()->getContents());
@@ -135,7 +137,7 @@ trait UploadFile {
                 return ["status" => false, "abort" => true, "error" => $res->getReasonPhrase()];
             }
         } catch (GuzzleException $e) {
-            self::log($username . " propfind failed " . print_r($e, true));
+            self::log_exception($username . " propfind failed", $e);
             $this->rcmail->output->command('plugin.nextcloud_upload_result', ['status' => 'folder_error']);
             return ["status" => false, "abort" => true];
         }
@@ -164,22 +166,18 @@ trait UploadFile {
         try {
             $res = $this->client->put($folder_uri . "/" . rawurlencode($filename), ["body" => $body, 'auth' => [$username, $password]]);
 
-            if ($res->getStatusCode() != 200 && $res->getStatusCode() != 201) {
-                $body = $res->getBody()->getContents();
-                try {
-                    $xml = new SimpleXMLElement($body);
-                } catch (Exception $e) {
-                    self::log($username . " xml parsing failed: " . print_r($e, true));
-                    $xml = [];
-                }
-
-                $this->rcmail->output->command('plugin.nextcloud_upload_result', [
-                    'status' => 'upload_error', 'message' => $res->getReasonPhrase(), 'result' => json_encode($xml)]);
-                return ["status" => false, "abort" => true, "error" => $res->getReasonPhrase()];
+        if ($res->getStatusCode() != 200 && $res->getStatusCode() != 201) {
+            $body = $res->getBody()->getContents();
+            try {
+                $xml = new SimpleXMLElement($body);
+            } catch (Exception $e) {
+                self::debug($body);
+                self::log_exception($username . " xml parsing failed", $e);
+                $xml = [];
             }
-        } catch (GuzzleException $e) {
-            self::log($username . " put failed: " . print_r($e, true));
-            $this->rcmail->output->command('plugin.nextcloud_upload_result', ['status' => 'upload_error']);
+
+            $this->rcmail->output->command('plugin.nextcloud_upload_result', [
+                'status' => 'upload_error', 'message' => $res->getReasonPhrase(), 'result' => json_encode($xml)]);
             return ["status" => false, "abort" => true, "error" => $res->getReasonPhrase()];
         }
 
@@ -286,7 +284,7 @@ trait UploadFile {
                     $xml = new SimpleXMLElement($body);
                 } catch (Exception $e) {
                     self::log($body);
-                    self::log($username . " xml parse failed: " . print_r($e, true));
+                    self::log_exception($username . " xml parse failed", $e);
                     $xml = [];
                 }
                 $this->rcmail->output->command('plugin.nextcloud_upload_result', [
@@ -298,11 +296,11 @@ trait UploadFile {
                 return ["status" => false, "abort" => true, "error" => $res->getReasonPhrase()];
             }
         } catch (GuzzleException $e) {
-            self::log($username . " share file failed: " . print_r($e, true));
+            self::log_exception($username . " share file failed", $e);
             $this->rcmail->output->command('plugin.nextcloud_upload_result', ['status' => 'link_error']);
             return ["status" => false, "abort" => true];
         } catch (Exception $e) {
-            self::log($username . " xml parse failed: " . print_r($e, true));
+            self::log_exception($username . " xml parse failed", $e);
             $this->rcmail->output->command('plugin.nextcloud_upload_result', ['status' => 'link_error']);
             return ["status" => false, "abort" => true];
         }
