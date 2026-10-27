@@ -61,34 +61,22 @@ trait UploadFile {
         $prefs = $this->rcmail->user->get_prefs();
 
         // we are not logged in, and know mail password won't work, so we are not trying anything
-        if ($this->rcmail->config->get(__("dont_try_mail_password"), false)) {
-            if (!isset($prefs["nextcloud_login"]) ||
-                empty($prefs["nextcloud_login"]["loginName"]) ||
-                empty($prefs["nextcloud_login"]["appPassword"])) {
-                return ["status" => false, "abort" => true];
-            }
+        if ($this->rcmail->config->get(__("dont_try_mail_password"), false) && !$this->has_app_password()) {
+            return ["status" => false, "abort" => true];
         }
 
         //get app password and username or use rc ones
-        $username = isset($prefs["nextcloud_login"]) ? $prefs["nextcloud_login"]["loginName"] : $this->resolve_username($this->rcmail->get_user_name());
-        $password = isset($prefs["nextcloud_login"]) ? $prefs["nextcloud_login"]["appPassword"] : $this->rcmail->get_user_password();
+        $creds = $this->get_credentials();
+        $username = $creds["user"];
+        $password = $creds["password"];
 
         $server = $this->rcmail->config->get(__("server"));
         $checksum = $this->rcmail->config->get(__("checksum"), "sha256");
 
         //server not configured
-        if (empty($server) || $username === false) {
+        if (empty($server) || empty($username)) {
             $this->rcmail->output->command('plugin.nextcloud_upload_result', ['status' => 'no_config']);
             return ["status" => false, "abort" => true];
-        }
-
-        // we are not logged in, and know mail password won't work, so we are not trying anything
-        if ($this->rcmail->config->get(__("dont_try_mail_password"), false)) {
-            if (!isset($prefs["nextcloud_login"]) ||
-                empty($prefs["nextcloud_login"]["loginName"]) ||
-                empty($prefs["nextcloud_login"]["appPassword"])) {
-                return ["status" => false, "abort" => true];
-            }
         }
 
         //get the attachment sub folder
@@ -394,7 +382,7 @@ trait UploadFile {
                 default => $this->rcmail->config->get(__("attached_html_lang"))
             };
         } else {
-            $dlang_user = $prefs[__("user_attached_html_lang")];
+            $dlang_user = $prefs[__("user_attached_html_lang")] ?? null;
             $dlang = match ($dlang_user) {
                 null, "default" => $this->rcmail->config->get(__("attached_html_lang"), $this->rcmail->user->language),
                 "display" => $this->rcmail->user->language,
@@ -414,12 +402,12 @@ trait UploadFile {
         // Object handlers for templated labels
         $html->add_handler("plugin.nextcloud_attachments.attachment_preamble", function (/* @noinspection PhpUnusedParameterInspection */$ignore) use ($data) {
             return html::tag("p", null,
-                $this->gettext(["name" => "file_is_filelink_download_below", "vars" => ["filename" => $data["name"]]]));
+                $this->gettext(["name" => "file_is_filelink_download_below", "vars" => ["filename" => html::quote($data["name"])]]));
         });
 
         $html->add_handler("plugin.nextcloud_attachments.attachment_disclaimer", function(/* @noinspection PhpUnusedParameterInspection */$ignore) use ($server) {
             return html::tag("p", null,
-                $this->gettext(["name" => "attachment_disclaimer", "vars" => ["serverurl" => $server]]));
+                $this->gettext(["name" => "attachment_disclaimer", "vars" => ["serverurl" => html::quote($server)]]));
         });
 
         $html->add_handler("plugin.nextcloud_attachments.copyright", function(/* @noinspection PhpUnusedParameterInspection */$ignore) use ($server) {
@@ -502,9 +490,9 @@ trait UploadFile {
 
         file_put_contents($tmpfname, $tmpl);
 
-        $_SESSION['plugins']['nextcloud_attachments'][$data["group"]][$id] = $tmpfname;
+        $_SESSION['plugins']['nextcloud_attachments']['files'][$data["group"]][$id] = $tmpfname;
 
-        self::debug('generated attach template', $tmpl);
+        self::debug('generated attach template for ' . $data["name"] . ' (' . strlen($tmpl) . ' bytes)');
 
         //return a html page as attachment that provides the download link
         return [

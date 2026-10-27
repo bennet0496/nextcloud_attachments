@@ -63,12 +63,11 @@ trait NextcloudLogin {
             }
 
             //save poll endpoint and token to session
-            $_SESSION['plugins']['nextcloud_attachments'] = $data['poll'];
-            unset($_SESSION['plugins']['nextcloud_attachments']['login_result']);
+            $_SESSION['plugins']['nextcloud_attachments']['login'] = $data['poll'];
 
             $this->rcmail->output->command('plugin.nextcloud_login', ['status' => "ok", "url" => $data["login"]]);
         } catch (GuzzleException $e) {
-            self::log($this->rcmail->get_user_name() . " login request failed: " . print_r($e, true));
+            self::log_exception($this->rcmail->get_user_name() . " login request failed", $e);
             $this->rcmail->output->command('plugin.nextcloud_login', ['status' => null]);
         }
     }
@@ -76,53 +75,39 @@ trait NextcloudLogin {
     private function login_status(): array
     {
         //Cached Result
-        if (isset($_SESSION['plugins']['nextcloud_attachments']) &&
-            @$_SESSION['plugins']['nextcloud_attachments']['login_result']) {
-            return $_SESSION['plugins']['nextcloud_attachments']['login_result'];
+        if (!empty($_SESSION['plugins']['nextcloud_attachments']['login']['login_result'])) {
+            return $_SESSION['plugins']['nextcloud_attachments']['login']['login_result'];
         }
-
-        $prefs = $this->rcmail->user->get_prefs();
 
         $server = $this->rcmail->config->get(__("server"));
 
-        $username = $this->resolve_username();
-
         //missing config
-        if (empty($server) || empty($username)) {
+        if (empty($server) || empty($this->resolve_username())) {
             return ['status' => null];
         }
 
         //always prompt for app password, as mail passwords are determined to not work regardless
-        if ($this->rcmail->config->get(__("dont_try_mail_password"), false)) {
-            if (!isset($prefs["nextcloud_login"]) ||
-                empty($prefs["nextcloud_login"]["loginName"]) ||
-                empty($prefs["nextcloud_login"]["appPassword"])) {
-                return ['status' => 'login_required'];
-            }
+        if ($this->rcmail->config->get(__("dont_try_mail_password"), false) && !$this->has_app_password()) {
+            return ['status' => 'login_required'];
         }
 
-        //get app password and username or use rc ones
-        $username = isset($prefs["nextcloud_login"]) ? $prefs["nextcloud_login"]["loginName"] : $this->resolve_username($this->rcmail->get_user_name());
-        $password = isset($prefs["nextcloud_login"]) ? $prefs["nextcloud_login"]["appPassword"] : $this->rcmail->get_user_password();
+        $creds = $this->get_credentials();
 
         //test webdav login
         try {
-            $res = $this->client->request("PROPFIND", $this->dav_files_uri($creds['user']), ['auth' => [$creds["login"], $creds["password"]]]);
+            $res = $this->client->request("PROPFIND", $this->dav_files_uri($creds['user']), ['auth' => [$creds["user"], $creds["password"]]]);
             /** @noinspection SpellCheckingInspection */
             $scode = $res->getStatusCode();
             switch ($scode) {
                 case 401:
-                case 403:
-                    unset($prefs["nextcloud_login"]);
-                    $this->rcmail->user->save_prefs($prefs);
-                    //we can't use the password
-                    $_SESSION['plugins']['nextcloud_attachments']['login_result'] = ['status' => 'login_required'];
+                    //we can't use the password. an invalid app password can't be revoked anymore
+                    $this->forget_app_password(false);
+                    $_SESSION['plugins']['nextcloud_attachments']['login']['login_result'] = ['status' => 'login_required'];
                     return ['status' => 'login_required'];
                 case 404:
-                    unset($prefs["nextcloud_login"]);
-                    $this->rcmail->user->save_prefs($prefs);
+                    $this->forget_app_password(true);
                     //the username does not exist
-                    $_SESSION['plugins']['nextcloud_attachments']['login_result'] = ['status' => 'invalid_user'];
+                    $_SESSION['plugins']['nextcloud_attachments']['login']['login_result'] = ['status' => 'invalid_user'];
                     return ['status' => 'invalid_user'];
                 case 200:
                 case 207:
@@ -134,9 +119,6 @@ trait NextcloudLogin {
                         $_SESSION['plugins']['nextcloud_attachments']['login_result'] =
                             ['status' => null, 'code' => $scode, 'message' => $res->getReasonPhrase()];
                     }
-                    //Probably bad idea as a single 500 error will kill the logins of all active users
-                    //unset($prefs["nextcloud_login"]);
-                    //$this->rcmail->user->save_prefs($prefs);
                     //something weired happened
                     return ['status' => null, 'code' => $scode, 'message' => $res->getReasonPhrase()];
             }
@@ -152,31 +134,8 @@ trait NextcloudLogin {
      */
     public function logout(): void
     {
-        $prefs = $this->rcmail->user->get_prefs();
-
-        $username = isset($prefs["nextcloud_login"]) ? $prefs["nextcloud_login"]["loginName"] : $this->resolve_username($this->rcmail->get_user_name());
-        $password = $prefs["nextcloud_login"]["appPassword"];
-
-        if (isset($password)) {
-            $server = $this->rcmail->config->get(__("server"));
-
-            if (!empty($server)) {
-                try {
-                    /** @noinspection SpellCheckingInspection */
-                    $this->client->delete($server . "/ocs/v2.php/core/apppassword", [
-                        'headers' => [
-                            'OCS-APIRequest' => 'true'
-                        ],
-                        'auth' => [$username, $password]
-                    ]);
-                } catch (GuzzleException) {
-                }
-            }
-        }
-
-        $prefs["nextcloud_login"] = null;
-        unset($_SESSION['plugins']['nextcloud_attachments']);
-        $this->rcmail->user->save_prefs($prefs);
+        $this->forget_app_password(true);
+        unset($_SESSION['plugins']['nextcloud_attachments']['login']);
         $this->rcmail->output->command('command', 'save');
     }
 
@@ -187,10 +146,10 @@ trait NextcloudLogin {
     public function poll($param): void
     {
         //check if there is poll endpoint
-        if (isset($_SESSION['plugins']['nextcloud_attachments']['endpoint']) && isset($_SESSION['plugins']['nextcloud_attachments']['token'])) {
+        if (isset($_SESSION['plugins']['nextcloud_attachments']['login']['endpoint']) && isset($_SESSION['plugins']['nextcloud_attachments']['login']['token'])) {
             //poll it
             try {
-                $res = $this->client->post($_SESSION['plugins']['nextcloud_attachments']['endpoint'] . "?token=" . $_SESSION['plugins']['nextcloud_attachments']['token']);
+                $res = $this->client->post($_SESSION['plugins']['nextcloud_attachments']['login']['endpoint'] . "?token=" . $_SESSION['plugins']['nextcloud_attachments']['login']['token']);
 
                 //user finished login
                 if ($res->getStatusCode() == 200) {
@@ -198,32 +157,48 @@ trait NextcloudLogin {
                     $data = json_decode($body, true);
                     if (isset($data['appPassword']) && isset($data['loginName'])) {
                         //save app password to user preferences
-                        $prefs = $this->rcmail->user->get_prefs();
-                        $prefs["nextcloud_login"] = $data;
-                        $this->rcmail->user->save_prefs($prefs);
-                        unset($_SESSION['plugins']['nextcloud_attachments']);
+                        $this->store_app_password($data['loginName'], $data['appPassword']);
+                        unset($_SESSION['plugins']['nextcloud_attachments']['login']);
                         if ($param["task"] == "settings") {
                             $this->rcmail->output->command('command', 'save');
                         }
                         $this->rcmail->output->command('plugin.nextcloud_login_result', ['status' => "ok"]);
                     }
                 } else if ($res->getStatusCode() != 404) { //login timed out
-                    unset($_SESSION['plugins']['nextcloud_attachments']);
+                    unset($_SESSION['plugins']['nextcloud_attachments']['login']);
                 }
             } catch (GuzzleException $e) {
                 self::log_exception("poll failed", $e);
             }
         }
     }
+
     private function has_app_password(): bool
     {
         $prefs = $this->rcmail->user->get_prefs()["nextcloud_login"] ?? null;
         return !empty($prefs["loginName"]) && !empty($prefs["appPassword"]);
     }
+
+    /**
+     * Credentials to use for Nextcloud.
+     * app password from the login flow if present,the Roundcube login otherwise.
+     *
+     */
     private function get_credentials(): array
     {
         if ($this->has_app_password()) {
             $prefs = $this->rcmail->user->get_prefs();
+
+            // migrate to encrypted passwords
+            if (empty($prefs["nextcloud_login"]["encrypted"])) {
+                if ($prefs["nextcloud_login"]["appPassword"] = $this->rcmail->encrypt($prefs["nextcloud_login"]["appPassword"])){
+                    $prefs["nextcloud_login"]["encrypted"] = true;
+                    $this->rcmail->user->save_prefs($prefs);
+                } else {
+                    $prefs = $this->rcmail->user->get_prefs(); //error: discard changes
+                }
+            }
+
             $nc_prefs = $prefs["nextcloud_login"];
 
             $password = empty($nc_prefs["encrypted"]) ? $nc_prefs["appPassword"] : $this->rcmail->decrypt($nc_prefs["appPassword"]);
@@ -235,5 +210,46 @@ trait NextcloudLogin {
 
         $username = $this->resolve_username($this->rcmail->get_user_name());
         return ["user" => $username, "password" => (string)$this->rcmail->get_user_password()];
+    }
+
+    private function store_app_password(string $login_name, string $app_password): void
+    {
+        $encrypted = $this->rcmail->encrypt($app_password);
+
+        $prefs = $this->rcmail->user->get_prefs();
+        $prefs["nextcloud_login"] = [
+            "loginName" => $login_name,
+            "appPassword" => $encrypted === false ? $app_password : $encrypted,
+            "encrypted" => $encrypted !== false,
+        ];
+        $this->rcmail->user->save_prefs($prefs);
+    }
+
+    /**
+     * Remove the stored app password, and revoke it on the server if requested
+     */
+    private function forget_app_password(bool $revoke): void
+    {
+        if (!$this->has_app_password()) {
+            return;
+        }
+
+        if ($revoke) {
+            $creds = $this->get_credentials();
+            try {
+                /** @noinspection SpellCheckingInspection */
+                $this->client->delete($this->rcmail->config->get(__("server")) . "/ocs/v2.php/core/apppassword", [
+                    'headers' => ['OCS-APIRequest' => 'true'],
+                    'auth' => [$creds["user"], $creds["password"]]
+                ]);
+            } catch (GuzzleException $e) {
+                self::log_exception($creds["user"] . " app password revocation failed", $e);
+            }
+        }
+
+        $prefs = $this->rcmail->user->get_prefs();
+        // must be null, unset keys are merged back by save_prefs
+        $prefs["nextcloud_login"] = null;
+        $this->rcmail->user->save_prefs($prefs);
     }
 }

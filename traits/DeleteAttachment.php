@@ -42,14 +42,13 @@ trait DeleteAttachment {
                 return ["status" => false, "abort" => true];
             }
 
-            $server = $this->rcmail->config->get(__("server"));
-            $username = isset($prefs["nextcloud_login"]) ? $prefs["nextcloud_login"]["loginName"] : $this->resolve_username($this->rcmail->get_user_name());
-            $password = isset($prefs["nextcloud_login"]) ? $prefs["nextcloud_login"]["appPassword"] : $this->rcmail->get_user_password();
+            $creds = $this->get_credentials();
+            $username = $creds["user"];
 
             $path = implode("/", array_map(function ($tok) { return rawurlencode($tok); },
                 explode("/", $param["remote_path"])));
             try {
-                $res = $this->client->delete($this->dav_files_uri($creds['user']) . "/" . $path, ["auth" => [$creds["login"], $creds["password"]]]);
+                $res = $this->client->delete($this->dav_files_uri($creds['user']) . "/" . $path, ["auth" => [$creds["user"], $creds["password"]]]);
                 // already gone is fine
                 if ($res->getStatusCode() >= 400 && $res->getStatusCode() != 404) {
                     $this->rcmail->output->command('plugin.nextcloud_delete_result', ['status' => 'error', 'message' => $res->getReasonPhrase(), 'file' => $param['id']]);
@@ -75,8 +74,8 @@ trait DeleteAttachment {
     public function cleanup(array $param): array
     {
         // taken from filesystem_attachments
-        if (!empty($_SESSION['plugins']['nextcloud_attachments'])) {
-            foreach ($_SESSION['plugins']['nextcloud_attachments'] as $group => $files) {
+        if (!empty($_SESSION['plugins']['nextcloud_attachments']['files'])) {
+            foreach ($_SESSION['plugins']['nextcloud_attachments']['files'] as $group => $files) {
                 if (!empty($param['group']) && $param['group'] != $group) {
                     continue;
                 }
@@ -87,7 +86,7 @@ trait DeleteAttachment {
                     }
                 }
 
-                unset($_SESSION['plugins']['nextcloud_attachments'][$group]);
+                unset($_SESSION['plugins']['nextcloud_attachments']['files'][$group]);
             }
         }
 
