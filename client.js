@@ -23,7 +23,7 @@ rcmail.addEventListener("plugin.nextcloud_login", function(data) {
     if (data.status === "ok") {
         rcmail.env.nextcloud_login_flow = data.url;
     } else {
-        rcmail.display_messge(rcmail.gettext("login_failed", "nextcloud_attachments"), "error", 10000);
+        rcmail.display_message(rcmail.gettext("login_failed", "nextcloud_attachments"), "error", 10000);
     }
 });
 
@@ -247,8 +247,14 @@ rcmail.nextcloud_login_button_click_handler = function(btn_evt, dialog, files = 
         }
     }, 1000, dialog)
 
-    //wait for login to finish
+    //wait for login to finish. Nextcloud expires the login flow after 20 minutes
+    clearInterval(window.nextcloud_poll_interval);
+    const poll_until = Date.now() + 20 * 60 * 1000;
     window.nextcloud_poll_interval = setInterval(function (t) {
+        if (Date.now() > poll_until) {
+            clearInterval(window.nextcloud_poll_interval);
+            return;
+        }
         rcmail.refresh();
         if(rcmail.env.nextcloud_upload_login_available === true && rcmail.env.nextcloud_upload_available === true) {
             if(rcmail.task === "settings") {
@@ -319,7 +325,7 @@ rcmail.addEventListener('init', function(evt) {
                 // noinspection SpellCheckingInspection
                 const dialog = rcmail.show_popup_dialog(
                     rcmail.gettext("file_too_big_not_logged_in_explain", "nextcloud_attachments")
-                        .replace("%limit%", human_limit.toFixed(0) + " " + unit[unit_idx] + "B"),
+                        .replace("%limit%", human_limit.toFixed(0) + " " + unit[limit_unit_idx] + "B"),
                     rcmail.gettext("file_too_big", "nextcloud_attachments"), [
                     {
                         text: rcmail.gettext("login", "nextcloud_attachments"),
@@ -356,7 +362,7 @@ rcmail.addEventListener('init', function(evt) {
             {
                 const dialog = rcmail.show_popup_dialog(
                     rcmail.gettext("file_too_big_explain", "nextcloud_attachments")
-                        .replace("%limit%", human_limit.toFixed(0) + " " + unit[unit_idx] + "B"),
+                        .replace("%limit%", human_limit.toFixed(0) + " " + unit[limit_unit_idx] + "B"),
                     rcmail.gettext("file_too_big", "nextcloud_attachments"),
                     [
                         {
