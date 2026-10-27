@@ -196,13 +196,15 @@ trait UploadFile {
 
         $exp_links = $this->rcmail->config->get(__("expire_links"), false);
         $exp_links_lock = $this->rcmail->config->get(__("expire_links_locked"), false);
-        $exp_links_user = @$prefs[__("user_expire_links")] ? $prefs[__("user_expire_links_after")] : false;
+        // an unlocked user choice overrides the global default, also when it disables expiry
+        if ($exp_links_lock || !isset($prefs[__("user_expire_links")])) {
+            $expiry_days = $exp_links > 0 ? $exp_links : false;
+        } else {
+            $expiry_days = $prefs[__("user_expire_links")] ? ($prefs[__("user_expire_links_after")] ?? 7) : false;
+        }
 
         $form_params = [];
-        if ($exp_links > 0 || (!$exp_links_lock && $exp_links_user)) {
-            $expiry_days = $exp_links ?
-                ($exp_links_lock ? $exp_links : ($exp_links_user ?: 7)) : // global defined
-                ($exp_links_lock ? 7 : (($exp_links_user ?: 7))); // global undefined
+        if ($expiry_days) {
             $expire_date = new DateTime();
             $interval = DateInterval::createFromDateString($expiry_days ." days");
 
@@ -214,11 +216,16 @@ trait UploadFile {
         $pass_links = $this->rcmail->config->get(__("password_protected_links"), false);
         $pass_links_lock = $this->rcmail->config->get(__("password_protected_links_locked"), false);
         $pass_length = $this->rcmail->config->get(__("password_length"), 12);
-        $pass_links_user = $prefs[__("user_password_protected_links")] ?? false;
         // default without lookalikes: 0O Il
         $pass_alphabets = $this->rcmail->config->get(__("password_alphabets"), ["123456789", "ABCDEFGHJKLMNPQRSTUVWXYZ", "abcdefghijkmnopqrstuvwxyz"]);
 
-        if ($pass_links || (!$pass_links_lock && $pass_links_user)) {
+        if ($pass_links_lock || !isset($prefs[__("user_password_protected_links")])) {
+            $use_password = (bool)$pass_links;
+        } else {
+            $use_password = (bool)$prefs[__("user_password_protected_links")];
+        }
+
+        if ($use_password) {
             $min_pass = array_map(function ($alphabet) {
                 return substr($alphabet, random_int(0, strlen($alphabet) - 1), 1);
             }, $pass_alphabets);

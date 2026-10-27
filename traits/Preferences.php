@@ -45,11 +45,11 @@ trait Preferences {
         $server = $this->rcmail->config->get(__("server"));
         $blocks = $param["blocks"];
 
-        $username = isset($prefs["nextcloud_login"]) ? $prefs["nextcloud_login"]["loginName"] : $this->resolve_username($this->rcmail->get_user_name());
-
         $login_result = $this->login_status();
 
-        $can_disconnect = isset($prefs["nextcloud_login"]);
+        $username = $this->get_credentials()["user"];
+
+        $can_disconnect = $this->has_app_password();
 
         if ($param["current"] == "compose") {
             //get the attachment sub folder
@@ -61,7 +61,7 @@ trait Preferences {
                 IntlDateFormatter::FULL,
                 null,
                 IntlDateFormatter::GREGORIAN,
-                $tokens[1] ?? "Y/LLLL"
+                "Y/LLLL"
             );
 
             $layout_select = new html_select(["id" => __("folder_layout"), "value" => $prefs[__("user_folder_layout")] ?? "default", "name" => "_".__("folder_layout")]);
@@ -139,12 +139,12 @@ trait Preferences {
                 "options" => [
                     "server" => [
                         "title" => htmlentities($this->gettext("cloud_server")),
-                        "content" => "<a href='" . $server . "' target='_blank'>" . parse_url($server, PHP_URL_HOST) . "</a>"
+                        "content" => html::a(["href" => $server, "target" => "_blank"], html::quote(parse_url($server, PHP_URL_HOST)))
                     ],
                     "connection" => [
                         "title" => htmlentities($this->gettext("status")),
                         "content" => $login_result["status"] == "ok" ?
-                            htmlentities($this->gettext("connected_as")) . " " . $username . ($can_disconnect ? " (<a href=\"#\" onclick=\"rcmail.http_post('plugin.nextcloud_disconnect')\">" . htmlentities($this->gettext("disconnect")) . "</a>)" : "") :
+                            htmlentities($this->gettext("connected_as")) . " " . html::quote($username) . ($can_disconnect ? " (<a href=\"#\" onclick=\"rcmail.http_post('plugin.nextcloud_disconnect')\">" . htmlentities($this->gettext("disconnect")) . "</a>)" : "") :
                             htmlentities($this->gettext("not_connected")) . " (<a href=\"#\" onclick=\"window.rcmail.nextcloud_login_button_click_handler(null, null)\">" . htmlentities($this->gettext("connect")) . "</a>)"
                     ],
 
@@ -214,8 +214,8 @@ trait Preferences {
         }
 
         $pass_prot = $_POST["_".__("password_protected_links")] ?? null;
-        if (!$this->rcmail->config->get(__("password_protected_links_locked"), true) && $pass_prot == 1) {
-            $param["prefs"][__("user_password_protected_links")] = true;
+        if (!$this->rcmail->config->get(__("password_protected_links_locked"), true)) {
+            $param["prefs"][__("user_password_protected_links")] = $pass_prot == 1;
         }
 
         $expire_links = $_POST["_".__("expire_links")] ?? null;

@@ -215,4 +215,25 @@ trait NextcloudLogin {
             }
         }
     }
+    private function has_app_password(): bool
+    {
+        $prefs = $this->rcmail->user->get_prefs()["nextcloud_login"] ?? null;
+        return !empty($prefs["loginName"]) && !empty($prefs["appPassword"]);
+    }
+    private function get_credentials(): array
+    {
+        if ($this->has_app_password()) {
+            $prefs = $this->rcmail->user->get_prefs();
+            $nc_prefs = $prefs["nextcloud_login"];
+
+            $password = empty($nc_prefs["encrypted"]) ? $nc_prefs["appPassword"] : $this->rcmail->decrypt($nc_prefs["appPassword"]);
+            return [
+                "user" => $nc_prefs["loginName"],
+                "password" => (string)$password,
+            ];
+        }
+
+        $username = $this->resolve_username($this->rcmail->get_user_name());
+        return ["user" => $username, "password" => (string)$this->rcmail->get_user_password()];
+    }
 }
