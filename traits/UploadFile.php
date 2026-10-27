@@ -26,13 +26,11 @@ namespace NextcloudAttachments;
 use DateInterval;
 use DateTime;
 use Exception;
-use GuzzleHttp\Psr7;
 use GuzzleHttp\Exception\GuzzleException;
 use html;
 use IntlDateFormatter;
 use rcmail_output_html;
 use SimpleXMLElement;
-use Ramsey\Uuid\Uuid;
 
 
 require_once dirname(__FILE__) . "/../Modifiable_Mail_mime.php";
@@ -45,8 +43,6 @@ trait UploadFile {
      *
      * @param $data array attachment info
      * @return array attachment info
-     * @throws GuzzleException
-     * @throws Exception
      */
     public function upload(array $data): array
     {
@@ -66,9 +62,7 @@ trait UploadFile {
         }
 
         //get app password and username or use rc ones
-        $creds = $this->get_credentials();
-        $username = $creds["user"];
-        $password = $creds["password"];
+        ["user" => $username, "password" => $password] = $this->get_credentials();
 
         $server = $this->rcmail->config->get(__("server"));
         $checksum = $this->rcmail->config->get(__("checksum"), "sha256");
@@ -83,62 +77,61 @@ trait UploadFile {
         $folder = $this->get_folder();
 
         //full link with urlencoded folder (space must be %20 and not +)
-        $folder_uri = $this->dav_files_uri($creds['user']) . "/" . implode("/", array_map("rawurlencode", explode("/", $folder)));
+        $folder_uri = $this->dav_files_uri($username) . "/" . implode("/", array_map("rawurlencode", explode("/", $folder)));
 
         //check folder
+        /** @noinspection PhpUnhandledExceptionInspection */
         try {
             $res = $this->client->request("PROPFIND", $folder_uri, ['auth' => [$username, $password]]);
+        } catch (GuzzleException $e) {
+            self::log_exception("PROPFIND failed", $e);
+            $this->rcmail->output->command('plugin.nextcloud_upload_result', ['status' => 'folder_error']);
+            return ["status" => false, "abort" => true, "error" => $e->getMessage()];
+        }
 
-            if ($res->getStatusCode() == 404) { //folder does not exist
-                //attempt to create the folder
-                try {
-                    if ($this->rcmail->config->get(__("sync_exclude_lst"), false)) {
-                        $this->update_exclude($username, $password, $this->dav_files_uri($creds['user']), $folder);
-                    }
-                    $res = $this->client->request("MKCOL", $folder_uri, ['auth' => [$username, $password]]);
+        if ($res->getStatusCode() == 404) { //folder does not exist
+            //attempt to create the folder
+            if ($this->rcmail->config->get(__("sync_exclude_lst"), false)) {
+                $this->update_exclude($username, $password, $this->dav_files_uri($username), $folder);
+            }
 
-                    if ($res->getStatusCode() != 201) { //creation failed
-                        $body = $res->getBody()->getContents();
-                        try {
-                            $xml = new SimpleXMLElement($body);
-                        } catch (Exception $e) {
-                            self::log_exception($username . " xml parsing failed", $e);
-                            $xml = [];
-                        }
-
-                        $this->rcmail->output->command('plugin.nextcloud_upload_result', [
-                            'status' => 'mkdir_error',
-                            'code' => $res->getStatusCode(),
-                            'message' => $res->getReasonPhrase(),
-                            'result' => json_encode($xml)
-                        ]);
-
-                        self::log($username . " mkcol failed " . $res->getStatusCode() . PHP_EOL . $res->getBody()->getContents());
-                        return ["status" => false, "abort" => true, "error" => $res->getReasonPhrase()];
-                    }
-                } catch (GuzzleException $e) {
-                    self::log_exception($username . " mkcol request failed", $e);
-                    $this->rcmail->output->command('plugin.nextcloud_upload_result', ['status' => 'folder_error']);
-                    return ["status" => false, "abort" => true];
-                }
-            } else if ($res->getStatusCode() > 400) { //we can't access the folder
-                self::log($username . " propfind failed " . $res->getStatusCode() . PHP_EOL . $res->getBody()->getContents());
+            try {
+                $res = $this->client->request("MKCOL", $folder_uri, ['auth' => [$username, $password]]);
+            } catch (GuzzleException $e) {
+                self::log_exception("MKCOL failed", $e);
                 $this->rcmail->output->command('plugin.nextcloud_upload_result', ['status' => 'folder_error']);
+                return ["status" => false, "abort" => true, "error" => $e->getMessage()];
+            }
+
+            if ($res->getStatusCode() != 201) { //creation failed
+                $body = $res->getBody()->getContents();
+                try {
+                    $xml = new SimpleXMLElement($body);
+                } catch (Exception $e) {
+                    self::log_exception("xml parsing failed", $e);
+                    $xml = [];
+                }
+
+                $this->rcmail->output->command('plugin.nextcloud_upload_result', [
+                    'status' => 'mkdir_error',
+                    'code' => $res->getStatusCode(),
+                    'message' => $res->getReasonPhrase(),
+                    'result' => json_encode($xml)
+                ]);
+
+                self::log($username . " mkcol failed " . $res->getStatusCode() . PHP_EOL . $res->getBody()->getContents());
                 return ["status" => false, "abort" => true, "error" => $res->getReasonPhrase()];
             }
-        } catch (GuzzleException $e) {
-            self::log_exception($username . " propfind failed", $e);
+        } else if ($res->getStatusCode() >= 400) { //we can't access the folder
+            self::log($username . " propfind failed " . $res->getStatusCode() . PHP_EOL . $res->getBody()->getContents());
             $this->rcmail->output->command('plugin.nextcloud_upload_result', ['status' => 'folder_error']);
-            return ["status" => false, "abort" => true];
+            return ["status" => false, "abort" => true, "error" => $res->getReasonPhrase()];
         }
 
+
         // resolve the folder layout
-        try {
-            $folder_suffix = $this->resolve_destination_folder($folder_uri, $data["path"], $username, $password);
-        } catch (GuzzleException $e) {
-            self::log_exception($username . " folder layout creation failed", $e);
-            $folder_suffix = false;
-        }
+        $folder_suffix = $this->resolve_destination_folder($folder_uri, $data["path"], $username, $password);
+
         if ($folder_suffix === false) {
             $this->rcmail->output->command('plugin.nextcloud_upload_result', ['status' => 'folder_error']);
             return ["status" => false, "abort" => true];
@@ -160,84 +153,135 @@ trait UploadFile {
         }
 
 
-        $resource = Psr7\Utils::tryFopen($data["path"], 'r');
         $size = filesize($data["path"]);
-        $upload_id = Uuid::uuid4()->toString();
-
         $chunksize = 5 * 1024 * 1024; // 5MB
-        while ($size / $chunksize > 10_000) {
-            $chunksize += 5 * 1024 * 1024;
-        }
+        $resource = fopen($data["path"], 'r');
 
-        if ($chunksize > 5 * 1024 * 1024 * 1024) { // > 5GB
-            $this->rcmail->output->command('plugin.nextcloud_upload_result', ['status' => 'size_error']);
+        if ($size === false || $resource === false) {
+            $this->rcmail->output->command('plugin.nextcloud_upload_result', ['status' => 'upload_error']);
             return ["status" => false, "abort" => true];
         }
 
-        self::debug("preparing chunked upload ",$size, $upload_id);
+        if ($size < $chunksize) {
+            try {
+                $res = $this->client->put($folder_uri . "/" . rawurlencode($filename), [
+                    "auth" => [$username, $password],
+                    "body" => $resource,
+                    "headers" => [
+                        "If-None-Match" => "*"
+                    ]
+                ]);
+            } catch (GuzzleException $e) {
+                self::log_exception("PUT failed", $e);
+                $this->rcmail->output->command('plugin.nextcloud_upload_result', ['status' => 'upload_error', 'message' => $e->getMessage()]);
+                fclose($resource);
+                return ["status" => false, "abort" => true];
+            }
 
-        try {
-            $res = $this->client->request("MKCOL", $this->dav_upload_uri($creds['user'], $upload_id), [
-                "auth" => [$username, $password],
-                "headers" => [
-                    "Destination" => $folder_uri . "/" . rawurlencode($filename)
-                ]
-            ]);
+            if ($res->getStatusCode() >= 400){
+                $this->rcmail->output->command('plugin.nextcloud_upload_result', ['status' => 'upload_error', 'message' => $res->getReasonPhrase()]);
+                fclose($resource);
+                return ["status" => false, "abort" => true];
+            }
+        } else {
+            try {
+                $upload_id = bin2hex(random_bytes(16));
+            } catch (Exception) {
+                $this->rcmail->output->command('plugin.nextcloud_upload_result', ['status' => 'system_error']);
+                fclose($resource);
+                return ["status" => false, "abort" => true];
+            }
+
+            while ($size / $chunksize > 10_000) {
+                $chunksize += 5 * 1024 * 1024;
+            }
+
+            if ($chunksize > 5 * 1024 * 1024 * 1024) { // > 5GB
+                $this->rcmail->output->command('plugin.nextcloud_upload_result', ['status' => 'size_error']);
+                fclose($resource);
+                return ["status" => false, "abort" => true];
+            }
+
+            self::debug("preparing chunked upload ", $size, $upload_id);
+
+            try {
+                $res = $this->client->request("MKCOL", $this->dav_upload_uri($username, $upload_id), [
+                    "auth" => [$username, $password],
+                    "headers" => [
+                        "Destination" => $folder_uri . "/" . rawurlencode($filename)
+                    ]
+                ]);
+            } catch (GuzzleException $e) {
+                self::log_exception("uploads MKCOL failed", $e);
+                $this->upload_error($upload_id, "", $e->getMessage());
+                fclose($resource);
+                return ["status" => false, "abort" => true];
+            }
+
+            if ($res->getStatusCode() >= 400){
+                $this->upload_error($upload_id, $res->getBody()->getContents(), $res->getReasonPhrase());
+                fclose($resource);
+                return ["status" => false, "abort" => true];
+            }
 
             self::debug($res->getStatusCode(), $res->getReasonPhrase(), $res->getBody()->getContents());
 
             $ctr = 1;
 
-            while(!feof($resource)) {
-                $res = $this->client->put($this->dav_upload_uri($creds['user'], $upload_id) . "/" . sprintf("%05d", $ctr), [
-                    "body" => fread($resource, $chunksize),
-                    "headers" => [
-                        "Destination" => $folder_uri . "/" . rawurlencode($filename),
-                        "OC-Total-Length" => $size
-                    ],
-                    "auth" => [$username, $password]
-                ]);
-                self::debug("chunk ".sprintf("%05d", $ctr), $res->getStatusCode(), $res->getReasonPhrase(), $res->getBody()->getContents());
+            while (($body = fread($resource, $chunksize)) !== false && $body !== "") {
+                try {
+                    $res = $this->client->put($this->dav_upload_uri($username, $upload_id) . "/" . sprintf("%05d", $ctr), [
+                        "body" => $body,
+                        "headers" => [
+                            "Destination" => $folder_uri . "/" . rawurlencode($filename),
+                            "OC-Total-Length" => $size
+                        ],
+                        "auth" => [$username, $password]
+                    ]);
+                } catch (GuzzleException $e) {
+                    self::log_exception("uploads PUT failed", $e);
+                    $this->upload_error($upload_id, "", $e->getMessage());
+                    fclose($resource);
+                    return ["status" => false, "abort" => true];
+                }
+
+                self::debug("chunk " . sprintf("%05d", $ctr), $res->getStatusCode()." ".$res->getReasonPhrase());
+
+                if ($res->getStatusCode() >= 400){
+                    $this->upload_error($upload_id, $res->getBody()->getContents(), $res->getReasonPhrase());
+                    fclose($resource);
+                    return ["status" => false, "abort" => true, "error" => $res->getReasonPhrase()];
+                }
+
                 $ctr++;
             }
 
-            $res = $this->client->request("MOVE", $this->dav_upload_uri($creds['user'], $upload_id) . "/.file", [
-                "auth" => [$username, $password],
-                "headers" => [
-                    "Destination" => $folder_uri . "/" . rawurlencode($filename),
-                    "Overwrite" => "F",
-                    "OC-Total-Length" => $size
-                ]
-            ]);
-
-            self::debug("upload result", $res->getStatusCode(), $res->getReasonPhrase(), $res->getBody()->getContents());
-
-            if ($res->getStatusCode() >= 400) {
-                $this->rcmail->output->command('plugin.nextcloud_upload_result', ['status' => 'upload_error']);
+            try {
+                $res = $this->client->request("MOVE", $this->dav_upload_uri($username, $upload_id) . "/.file", [
+                    "auth" => [$username, $password],
+                    "headers" => [
+                        "Destination" => $folder_uri . "/" . rawurlencode($filename),
+                        "Overwrite" => "F",
+                        "OC-Total-Length" => $size
+                    ]
+                ]);
+            } catch (GuzzleException $e) {
+                self::log_exception("uploads MOVE failed", $e);
+                $this->upload_error($upload_id, "", $e->getMessage());
                 return ["status" => false, "abort" => true];
             }
 
-        } catch (GuzzleException $e) {
-            self::log_exception($username . " put failed", $e);
-            $this->rcmail->output->command('plugin.nextcloud_upload_result', ['status' => 'upload_error']);
-            return ["status" => false, "abort" => true];
-        }
-//        } while ($res->getStatusCode() == 412 && ++$attempts < 3);
+            self::debug("upload result", $res->getStatusCode(), $res->getReasonPhrase());
 
-        if ($res->getStatusCode() != 200 && $res->getStatusCode() != 201) {
-            $body = $res->getBody()->getContents();
-            try {
-                $xml = new SimpleXMLElement($body);
-            } catch (Exception $e) {
-                self::debug($body);
-                self::log_exception($username . " xml parsing failed", $e);
-                $xml = [];
+            if ($res->getStatusCode() >= 400){
+                $this->upload_error($upload_id, $res->getBody()->getContents(), $res->getReasonPhrase());
+                return ["status" => false, "abort" => true, "error" => $res->getReasonPhrase()];
             }
 
-            $this->rcmail->output->command('plugin.nextcloud_upload_result', [
-                'status' => 'upload_error', 'message' => $res->getReasonPhrase(), 'result' => json_encode($xml)]);
-            return ["status" => false, "abort" => true, "error" => $res->getReasonPhrase()];
         }
+
+        fclose($resource);
+
 
         //create share link
         $id = $this->rcmail->user->ID . rand();
@@ -285,6 +329,7 @@ trait UploadFile {
 
         if ($use_password) {
             $min_pass = array_map(function ($alphabet) {
+                /** @noinspection PhpUnhandledExceptionInspection */
                 return substr($alphabet, random_int(0, strlen($alphabet) - 1), 1);
             }, $pass_alphabets);
             $miss_len = $pass_length - count($min_pass);
@@ -509,6 +554,28 @@ trait UploadFile {
             "remote_path" => $folder . "/" . $filename,
             "break" => true //no other plugin should process this attachment future
         ];
+    }
+
+    private function upload_error(string $upload_id, string $res_body, string $reason): void
+    {
+        ["user" => $username, "password" => $password] = $this->get_credentials();
+
+        try {
+            $xml = new SimpleXMLElement($res_body);
+        } catch (Exception $e) {
+            self::debug($res_body);
+            self::log_exception($username . " xml parsing failed", $e);
+            $xml = [];
+        }
+
+        $this->rcmail->output->command('plugin.nextcloud_upload_result', [
+            'status' => 'upload_error', 'message' => $reason, 'result' => json_encode($xml)]);
+
+        try {
+            $this->client->delete($this->dav_upload_uri($username, $upload_id), ["auth" => [$username, $password]]);
+        } catch (GuzzleException) {
+            // #WeTried :(
+        }
     }
 
     /**

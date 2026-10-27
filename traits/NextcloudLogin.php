@@ -114,11 +114,6 @@ trait NextcloudLogin {
                     //we can log in
                     return ['status' => 'ok'];
                 default:
-                    // Persist for client error codes. keep trying for server errors
-                    if ($scode < 500) {
-                        $_SESSION['plugins']['nextcloud_attachments']['login_result'] =
-                            ['status' => null, 'code' => $scode, 'message' => $res->getReasonPhrase()];
-                    }
                     //something weired happened
                     return ['status' => null, 'code' => $scode, 'message' => $res->getReasonPhrase()];
             }

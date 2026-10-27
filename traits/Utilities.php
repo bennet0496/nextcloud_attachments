@@ -276,9 +276,6 @@ trait Utilities
     }
 
     /** @noinspection PhpUnusedPrivateMethodInspection */
-    /**
-     * @throws GuzzleException
-     */
     private function resolve_destination_folder(string $folder_uri, string $file_path, string $username, string $password) : string | false
     {
         $folder_layout_locked = $this->rcmail->config->get(__("folder_layout_locked"), true);
@@ -328,9 +325,19 @@ trait Utilities
             $path = implode("/", array_map(function($t){return rawurlencode($t);}, array_slice($path_tokens,0, $i)));
             $path = str_ends_with($path, "/") ? $path : $path."/";
 
-            $res = $this->client->request("PROPFIND", $folder_uri."/".$path, ['auth' => [$username, $password]]);
+            try {
+                $res = $this->client->request("PROPFIND", $folder_uri . "/" . $path, ['auth' => [$username, $password]]);
+            } catch (GuzzleException $e) {
+                self::log_exception("PROPFIND failed", $e);
+                return false;
+            }
             if ($res->getStatusCode() == 404) {
-                $mkdir_res = $this->client->request("MKCOL", $folder_uri."/".$path, ['auth' => [$username, $password]]);
+                try {
+                    $mkdir_res = $this->client->request("MKCOL", $folder_uri . "/" . $path, ['auth' => [$username, $password]]);
+                } catch (GuzzleException $e) {
+                    self::log_exception("MKCOL failed", $e);
+                    return false;
+                }
                 if ($mkdir_res->getStatusCode() >= 400) {
                     return false;
                 }

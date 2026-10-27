@@ -40,6 +40,8 @@ $labels['missing_config'] = 'Nextcloud plugin config missing. Contact Admin!';
 $labels['cannot_mkdir'] = 'couldn\'t create sub folder for upload:';
 $labels['folder_access'] = 'Couldn\'t access upload folder! Check permissions or ask the admin';
 $labels['cannot_find_unique_name'] = 'couldn\'t find a unique upload filename. Try renaming the file or files in you Nextcloud folder';
+$labels['file_too_large_for_upload'] = 'The file is too large to be uploaded to Nextcloud';
+$labels['system_error'] = 'A System error occurred during upload. Please try again later.';
 $labels['cannot_link'] = 'upload of file succeeded, but we couldn\'t create a share link. Try to create the link manually or ask the admin for assistance.';
 
 $labels['cloud_attachments'] = 'Cloud Attachments';

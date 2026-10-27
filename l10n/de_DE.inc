@@ -40,7 +40,10 @@ $labels['missing_config'] = 'Nextcloud Erweiterung ist nicht konfiguriert. Bitte
 $labels['cannot_mkdir'] = 'Unterordner zum Hochladen konnte nicht erstellt werden:';
 $labels['folder_access'] = 'Es konnte nicht auf den Ordner zugegriffen werden! Bitte prüfen Sie die Berechtigungen oder fragen Sie einen Administrator';
 $labels['cannot_find_unique_name'] = 'Es konnte kein einzigartiger Dateiname gefunden werden. Versuchen Sie die Datei umzubenennen oder den Ordner in Nextcloud aufzuräumen';
+$labels['file_too_large_for_upload'] = 'Die Datei ist zu groß, um sie zu Nextcloud hochzuladen';
 $labels['cannot_link'] = 'Das hochladen der Datei war erfolgreich, es konnte aber kein Link erstellt werden. Bitte versuchen Sie manuell einen Link zu erstellen oder fragen Sie den Administrator.';
+$labels['system_error'] = 'Es ist ein Systemfehler während des Uploads aufgetreten. Bitte versuchen Sie es später erneut.';
+
 
 $labels['cloud_attachments'] = 'Cloud Anhänge';
 $labels['cloud_server'] = 'Cloud Server';

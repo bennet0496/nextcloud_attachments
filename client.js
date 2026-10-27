@@ -207,8 +207,14 @@ rcmail.addEventListener("plugin.nextcloud_upload_result", function(event) {
             case "name_error":
                 rcmail.show_popup_dialog(rcmail.gettext("cannot_find_unique_name", "nextcloud_attachments"), rcmail.gettext("upload_failed_title", "nextcloud_attachments"));
                 break;
+            case "system_error":
+                rcmail.display_message(rcmail.gettext("system_error", "nextcloud_attachments") + " " + (event.message ?? ""), "error", 10000);
+                break;
             case "upload_error":
-                rcmail.display_message(rcmail.gettext("upload_failed", "nextcloud_attachments") + " " + event.message, "error", 10000);
+                rcmail.display_message(rcmail.gettext("upload_failed", "nextcloud_attachments") + " " + (event.message ?? ""), "error", 10000);
+                break;
+            case "size_error":
+                rcmail.show_popup_dialog(rcmail.gettext("file_too_large_for_upload", "nextcloud_attachments"), rcmail.gettext("upload_failed_title", "nextcloud_attachments"));
                 break;
             case "link_error":
                 rcmail.show_popup_dialog(rcmail.gettext("cannot_link", "nextcloud_attachments"), rcmail.gettext("upload_warning_title", "nextcloud_attachments"));
@@ -228,7 +234,7 @@ rcmail.nextcloud_login_button_click_handler = function(btn_evt, dialog, files = 
     //potentially bad for slow network connections
     //however we cannot open popups outside the onclick handler
     setTimeout(function (t){
-        if (rcmail.env.nextcloud_login_flow !== null) {
+        if (rcmail.env.nextcloud_login_flow) {
             const hw = window.screen.availWidth / 2, hh = window.screen.availHeight / 2;
             const x = window.screenX + hw - 300, y = window.screenY + hh - 400;
             const pos = "screenX=" + x + ",screenY=" + y;
