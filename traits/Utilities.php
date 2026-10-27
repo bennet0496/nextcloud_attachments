@@ -339,12 +339,17 @@ trait Utilities
     {
         try{
             $res = $this->client->get( $base_uri. "/.sync-exclude.lst", ['auth' => [$username, $password]]);
-            $list = [$folder];
-            if ($res->getStatusCode() < 300) {
+            if ($res->getStatusCode() == 404) {
+                $list = [$folder];
+            } else if ($res->getStatusCode() == 200) {
                 $list = explode(PHP_EOL, $res->getBody()->getContents());
-                if (!preg_grep("/^".$folder."\/?$/", $list)) {
+                if (!preg_grep("/^" . preg_quote($folder, "/") . "\/?$/", $list)) {
                     $list[] = $folder;
                 }
+            } else {
+                // don't overwrite a list we couldn't read
+                self::log($username . " reading .sync-exclude.lst failed: " . $res->getStatusCode());
+                return;
             }
             $this->client->put($base_uri. "/.sync-exclude.lst", ['auth' => [$username, $password], 'body' => implode(PHP_EOL, $list)]);
         } catch (GuzzleException $e) {
