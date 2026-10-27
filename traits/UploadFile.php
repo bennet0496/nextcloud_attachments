@@ -519,7 +519,7 @@ trait UploadFile {
         $folder = $this->rcmail->config->get(__("folder"), "Mail Attachments");
         if (is_array($folder)) {
             $keys = array_map(fn ($k) => strtolower($k), array_keys($folder));
-            if (in_array(strtolower($this->rcmail->get_user_language()), $folder)) {
+            if (in_array(strtolower($this->rcmail->get_user_language()), $keys)) {
                 $folder = array_first(array_filter($folder,
                     fn ($k) => strtolower($this->rcmail->get_user_language()) == strtolower($k), ARRAY_FILTER_USE_KEY));
             } else if (in_array("en_us", $keys)) {
@@ -545,6 +545,10 @@ trait UploadFile {
         $msg = $this->rcmail->storage->get_message($param['param']['draft_uid'], $param['param']['mbox']);
 //        self::debug($msg);
 
+        if (empty($msg) || empty($msg->structure) || empty($msg->structure->parts)) {
+            return $param;
+        }
+
         foreach ($msg->structure->parts as /** @var \rcube_message_part $part */ $part) {
             $raw_headers = $this->rcmail->storage->get_raw_headers($msg->uid, $part->mime_id);
             if ((array_key_exists("x-mozilla-cloud-part",$part->headers) && str_starts_with($part->headers['x-mozilla-cloud-part'], "cloudFile")) ||
@@ -558,9 +562,9 @@ trait UploadFile {
                 if (array_key_exists('x-mozilla-cloud-part', $part->headers)) {
                     $uri = str_replace("cloudFile; url=", "", $part->headers['x-mozilla-cloud-part']);
                 } else {
-                    preg_match("/X-Mozilla-Cloud-Part: cloudFile; url=(.*?)\n/", $raw_headers, $matches);
+                    preg_match("/X-Mozilla-Cloud-Part: cloudFile; url=(.*?)\r?\n/", $raw_headers, $matches);
                     self::debug($matches);
-                    $uri = $matches[1];
+                    $uri = $matches[1] ?? null;
                 }
 
                 $attachments[] = [
